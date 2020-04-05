@@ -1,0 +1,6 @@
+libgamerzilla
+ 
+Library to interact with gamerzilla plugin for hubzilla.
+
+To build - cmake and make. To install, make install.
+
