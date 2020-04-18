@@ -215,8 +215,49 @@ bool GamerzillaSetTophy(int game_id, const char *name)
 					free(response);
 				}
 				content_destroy(&internal_struct);
+				remote_game_id = 0;
 			}
 			// Set trophy
+			int trophy_num = 0;
+			while (trophy_num < current.numTrophy)
+			{
+				if (strcmp(current.trophy[trophy_num].name, name) == 0)
+					break;
+				trophy_num++;
+			}
+			if (trophy_num == current.numTrophy)
+			{
+				fprintf(stderr, "Failed to find trophy %s\n", name);
+				return false; // Should not get here.
+			}
+			char *url, *postdata, *userpwd;
+			content internal_struct;
+			content_init(&internal_struct);
+			url = malloc(strlen(burl) + 30);
+			strcpy(url, burl);
+			strcat(url, "api/gamerzilla/trophy/set");
+			curl_easy_setopt(curl, CURLOPT_URL, url);
+			postdata = malloc(strlen(current.short_name) + strlen(current.trophy[trophy_num].name) + 30);
+			strcpy(postdata, "game=");
+			strcat(postdata, current.short_name);
+			strcat(postdata, "&trophy=");
+			strcat(postdata, current.trophy[trophy_num].name);
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+			userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
+			strcpy(userpwd, uname);
+			strcat(userpwd, ":");
+			strcat(userpwd, pswd);
+			curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteData);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &internal_struct);
+			CURLcode res = curl_easy_perform(curl);
+			if (res != CURLE_OK)
+				fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+			free(url);
+			free(postdata);
+			free(userpwd);
+			content_destroy(&internal_struct);
+			return true;
 		}
 	}
 	return false;
