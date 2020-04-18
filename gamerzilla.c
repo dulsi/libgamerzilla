@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <jansson.h>
 
 #define MODE_STANDALONE 0
 #define MODE_SERVER 1
@@ -24,6 +25,21 @@ typedef struct {
 	char *data;
 } content;
 
+void content_init(content *x)
+{
+	x->size = 0;
+	x->len = 0;
+	x->data = 0;
+}
+
+void content_destroy(content *x)
+{
+	x->size = 0;
+	x->len = 0;
+	free(x->data);
+	x->data = 0;
+}
+
 static size_t curlWriteData(void *buffer, size_t size, size_t nmemb, void *userp)
 {
 	content *response = (content *)userp;
@@ -38,6 +54,7 @@ static size_t curlWriteData(void *buffer, size_t size, size_t nmemb, void *userp
 		char *dataOld = response->data;
 		response->data = (char *)malloc(response->size);
 		memcpy(response->data, dataOld, response->len);
+		free(dataOld);
 	}
 	memcpy(response->data + response->len, buffer, size * nmemb);
 	response->len += size * nmemb;
@@ -104,9 +121,7 @@ bool GamerzillaSetTophy(int game_id, const char *name)
 				// Get game info
 				char *url, *postdata, *userpwd;
 				content internal_struct;
-				internal_struct.size = 0;
-				internal_struct.len = 0;
-				internal_struct.data = 0;
+				content_init(&internal_struct);
 				url = malloc(strlen(burl) + 20);
 				strcpy(url, burl);
 				strcat(url, "api/gamerzilla/game");
@@ -128,7 +143,78 @@ bool GamerzillaSetTophy(int game_id, const char *name)
 				free(url);
 				free(postdata);
 				free(userpwd);
+				json_t *root;
+				json_error_t error;
+				root = json_loads(internal_struct.data, 0, &error);
+				bool needSend = false;
 				// Send if old
+				if (root)
+				{
+					json_t *ver = json_object_get(root, "version");
+					if (json_is_string(ver))
+					{
+						int dbVersion = atol(json_string_value(ver));
+						// Should compare everything but trust version for now.
+						if (dbVersion < current.version)
+							needSend = true;
+						json_decref(root);
+					}
+					else
+					{
+						needSend = true;
+					}
+				}
+				else
+				{
+					needSend = true;
+				}
+				if (needSend)
+				{
+					char tmp[512];
+					root = json_object();
+					json_object_set_new(root, "shortname", json_string(current.short_name));
+					json_object_set_new(root, "name", json_string(current.name));
+					sprintf(tmp, "%d", current.version);
+					json_object_set_new(root, "version", json_string(tmp));
+					json_t *trophy = json_array();
+					json_object_set_new(root, "trophy", trophy);
+					for (int i = 0; i < current.numTrophy; i++)
+					{
+						json_t *curTrophy = json_object();
+						json_array_append_new(trophy, curTrophy);
+						json_object_set_new(curTrophy, "trophy_name", json_string(current.trophy[i].name));
+						json_object_set_new(curTrophy, "trophy_desc", json_string(current.trophy[i].desc));
+						sprintf(tmp, "%d", current.trophy[i].max_progress);
+						json_object_set_new(curTrophy, "max_progress", json_string(tmp));
+					}
+					char *response = json_dumps(root, 0);
+					json_decref(root);
+					internal_struct.len = 0;
+					url = malloc(strlen(burl) + 30);
+					strcpy(url, burl);
+					strcat(url, "api/gamerzilla/game/add");
+					curl_easy_setopt(curl, CURLOPT_URL, url);
+					postdata = malloc(strlen(response) + 20);
+					strcpy(postdata, "game=");
+					// TODO: Post encode the response
+					strcat(postdata, response);
+					curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+					userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
+					strcpy(userpwd, uname);
+					strcat(userpwd, ":");
+					strcat(userpwd, pswd);
+					curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+					curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteData);
+					curl_easy_setopt(curl, CURLOPT_WRITEDATA, &internal_struct);
+					CURLcode res = curl_easy_perform(curl);
+					if (res != CURLE_OK)
+						fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+					free(url);
+					free(postdata);
+					free(userpwd);
+					free(response);
+				}
+				content_destroy(&internal_struct);
 			}
 			// Set trophy
 		}
