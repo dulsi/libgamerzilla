@@ -12,6 +12,8 @@ set_target_properties(gamerzilla PROPERTIES VERSION ${GAMERZILLA_VERSION_STRING}
 target_include_directories (gamerzilla PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable (gamerzillatest gamerzillatest.c)
 target_link_libraries (gamerzillatest LINK_PUBLIC gamerzilla)
+add_executable (gamerzillaserver gamerzillaserver.c)
+target_link_libraries (gamerzillaserver LINK_PUBLIC gamerzilla)
 
 INCLUDE(FindPkgConfig)
 

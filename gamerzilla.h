@@ -2,6 +2,7 @@
 #define __gamerzilla_h__
 
 #include <stdbool.h>
+#include <sys/select.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,7 @@ bool GamerzillaGetTrophy(int game_id, const char *name, bool *acheived);
 bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
 bool GamerzillaSetTophy(int game_id, const char *name);
 bool GamerzillaSetTophyStat(int game_id, const char *name, int progress);
+void GamerzillaServerProcess(struct timeval *timeout);
 
 #ifdef __cplusplus
 }
