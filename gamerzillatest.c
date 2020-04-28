@@ -7,6 +7,7 @@ int main(int argc, char **argv)
 	GamerzillaTrophy trophy[5];
 	g.short_name = strdup("test");
 	g.name = strdup("Test");
+	g.image = strdup("test.png");
 	g.version = 1;
 	g.numTrophy = 5;
 	g.trophy = trophy;

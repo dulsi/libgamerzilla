@@ -149,6 +149,7 @@ int GamerzillaGameInit(Gamerzilla *g)
 {
 	current.short_name = strdup(g->short_name);
 	current.name = strdup(g->name);
+	current.image = strdup(g->image);
 	current.version = g->version;
 	current.numTrophy = g->numTrophy;
 	current.trophy = (GamerzillaTrophy*)malloc(sizeof(GamerzillaTrophy) * current.numTrophy);
@@ -281,6 +282,40 @@ static void GamerzillaSetGameInfo_internal(int game_id)
 		write(server_socket, postdata, hostsz);
 	}
 	free(postdata);
+	if (mode == MODE_STANDALONE)
+	{
+		content internal_struct;
+		char *url, *userpwd;
+		curl_mime *form = NULL;
+		curl_mimepart *field = NULL;
+		content_init(&internal_struct);
+		url = malloc(strlen(burl) + 30);
+		strcpy(url, burl);
+		strcat(url, "api/gamerzilla/game/image");
+		curl_easy_setopt(curl, CURLOPT_URL, url);
+		form = curl_mime_init(curl);
+		field = curl_mime_addpart(form);
+		curl_mime_name(field, "imagefile");
+		curl_mime_filedata(field, "test.png");
+		field = curl_mime_addpart(form);
+		curl_mime_name(field, "game");
+		curl_mime_data(field, current.short_name, CURL_ZERO_TERMINATED);
+		curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+		userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
+		strcpy(userpwd, uname);
+		strcat(userpwd, ":");
+		strcat(userpwd, pswd);
+		curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteData);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &internal_struct);
+		CURLcode res = curl_easy_perform(curl);
+		if (res != CURLE_OK)
+			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		curl_mime_free(form);
+		free(url);
+		free(userpwd);
+		content_destroy(&internal_struct);
+	}
 }
 
 static void GamerzillaSetTrophy_internal(int game_id, const char *name)

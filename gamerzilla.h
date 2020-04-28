@@ -19,6 +19,7 @@ typedef struct
 {
 	char *short_name;
 	char *name;
+	char *image;
 	int version;
 	int numTrophy;
 	GamerzillaTrophy *trophy;
