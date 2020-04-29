@@ -296,7 +296,7 @@ static void GamerzillaSetGameInfo_internal(int game_id)
 		form = curl_mime_init(curl);
 		field = curl_mime_addpart(form);
 		curl_mime_name(field, "imagefile");
-		curl_mime_filedata(field, "test.png");
+		curl_mime_filedata(field, current.image);
 		field = curl_mime_addpart(form);
 		curl_mime_name(field, "game");
 		curl_mime_data(field, current.short_name, CURL_ZERO_TERMINATED);
