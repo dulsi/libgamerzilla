@@ -130,11 +130,11 @@ static void gamerzillaClear(Gamerzilla *g, bool memFree)
 	g->trophy = NULL;
 }
 
-bool GamerzillaInit(bool bServer, const char *savedir)
+bool GamerzillaInit(bool server, const char *savedir)
 {
 	current.short_name = NULL;
 	save_dir = strdup(savedir);
-	if (bServer)
+	if (server)
 	{
 		// Initialize socket
 		mode = MODE_SERVEROFFLINE;

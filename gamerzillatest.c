@@ -31,5 +31,6 @@ int main(int argc, char **argv)
 		GamerzillaConnect(argv[1], argv[2], argv[3]);
 	int game_id = GamerzillaGameInit(&g);
 	GamerzillaSetTophy(game_id, "Slayer");
+	GamerzillaQuit();
 	return 0;
 }
