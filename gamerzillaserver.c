@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv)
 {
-	bool init = GamerzillaInit(true);
+	bool init = GamerzillaInit(true, "./server/");
 	if (!init)
 	{
 		fprintf(stderr, "Failed to start server\n");

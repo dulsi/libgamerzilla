@@ -26,7 +26,7 @@ int main(int argc, char **argv)
 	trophy[4].name = strdup("Untouchable");
 	trophy[4].desc = strdup("Defeat boss without taking damage");
 	trophy[4].max_progress = 0;
-	GamerzillaInit(false);
+	GamerzillaInit(false, "./");
 	if (argc == 4)
 		GamerzillaConnect(argv[1], argv[2], argv[3]);
 	int game_id = GamerzillaGameInit(&g);
