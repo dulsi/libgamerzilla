@@ -28,7 +28,7 @@ typedef struct
 bool GamerzillaInit(bool server, const char *savedir);
 bool GamerzillaConnect(const char *url, const char *username, const char *password);
 int GamerzillaGameInit(Gamerzilla *g);
-bool GamerzillaGetTrophy(int game_id, const char *name, bool *acheived);
+bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
 bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
 bool GamerzillaSetTophy(int game_id, const char *name);
 bool GamerzillaSetTophyStat(int game_id, const char *name, int progress);

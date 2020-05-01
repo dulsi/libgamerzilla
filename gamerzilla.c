@@ -106,6 +106,12 @@ static size_t curlWriteData(void *buffer, size_t size, size_t nmemb, void *userp
 	return nmemb;
 }
 
+static size_t curlWriteFile(void *ptr, size_t size, size_t nmemb, void *fd)
+{
+  size_t written = write(*((int *)fd), ptr, size * nmemb);
+  return written;
+}
+
 static void gamerzillaClear(Gamerzilla *g, bool memFree)
 {
 	if (memFree)
@@ -480,13 +486,29 @@ int GamerzillaGameInit(Gamerzilla *g)
 	return 9999;
 }
 
-bool GamerzillaGetTrophy(int game_id, const char *name, bool *acheived)
+bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 {
+	for (int i = 0; i < current.numTrophy; i++)
+	{
+		if (0 == strcmp(name, current.trophy[i].name))
+		{
+			*achieved = currentData[i].achieved;
+			return true;
+		}
+	}
 	return false;
 }
 
 bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress)
 {
+	for (int i = 0; i < current.numTrophy; i++)
+	{
+		if (0 == strcmp(name, current.trophy[i].name))
+		{
+			*progress = currentData[i].progress;
+			return true;
+		}
+	}
 	return false;
 }
 
@@ -723,6 +745,42 @@ static bool GamerzillaServerProcessClient(int fd)
 					if (update)
 					{
 						gamefile_write(&g, t);
+						// TODO: Download images
+						char *postdata;
+						char *url, *userpwd;
+						url = malloc(strlen(burl) + 40);
+						strcpy(url, burl);
+						strcat(url, "api/gamerzilla/game/image/show");
+						postdata = malloc(strlen(name) + 10);
+						strcpy(postdata, "game=");
+						strcat(postdata, name);
+						curl_easy_setopt(curl, CURLOPT_URL, url);
+						curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+						curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
+						userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
+						strcpy(userpwd, uname);
+						strcat(userpwd, ":");
+						strcat(userpwd, pswd);
+						curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+						char *filename = malloc(strlen(save_dir) + 30 + strlen(name));
+						strcpy(filename, save_dir);
+						strcat(filename, "/image/");
+						strcat(filename, name);
+						strcat(filename, ".png");
+						int fd = creat(filename, S_IRWXU);
+						if (fd > -1)
+						{
+							curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteFile);
+							curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
+							CURLcode res = curl_easy_perform(curl);
+							if (res != CURLE_OK)
+								fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+							close(fd);
+						}
+						free(url);
+						free(filename);
+						free(postdata);
+						free(userpwd);
 					}
 				}
 			}
@@ -869,7 +927,6 @@ static bool GamerzillaServerProcessClient(int fd)
 			uint32_t sz;
 			uint32_t hostsz;
 			content client_content;
-			content internal_struct;
 			char *shortname;
 			read(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
@@ -877,42 +934,58 @@ static bool GamerzillaServerProcessClient(int fd)
 			read(fd, shortname, hostsz);
 			shortname[hostsz] = 0;
 			content_init(&client_content);
-			content_init(&internal_struct);
 			read(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_read(fd, &client_content, hostsz);
-			char *url, *userpwd;
-			curl_mime *form = NULL;
-			curl_mimepart *field = NULL;
-			url = malloc(strlen(burl) + 30);
-			strcpy(url, burl);
-			strcat(url, "api/gamerzilla/game/image");
-			curl_easy_setopt(curl, CURLOPT_URL, url);
-			form = curl_mime_init(curl);
-			field = curl_mime_addpart(form);
-			curl_mime_data(field, client_content.data, client_content.len);
-			curl_mime_filename(field, "image.png");
-			curl_mime_name(field, "imagefile");
-			field = curl_mime_addpart(form);
-			curl_mime_name(field, "game");
-			curl_mime_data(field, shortname, CURL_ZERO_TERMINATED);
-			curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
-			userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
-			strcpy(userpwd, uname);
-			strcat(userpwd, ":");
-			strcat(userpwd, pswd);
-			curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteData);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &internal_struct);
-			CURLcode res = curl_easy_perform(curl);
-			if (res != CURLE_OK)
-				fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-			curl_mime_free(form);
-			free(url);
-			free(userpwd);
+			char *filename = (char *)malloc(strlen(save_dir) + strlen(shortname) + 20);
+			strcpy(filename, save_dir);
+			strcat(filename, "image/");
+			strcat(filename, shortname);
+			strcat(filename, ".png");
+			int fd = creat(filename, S_IRWXU);
+			if (fd > -1)
+			{
+				write(fd, client_content.data, client_content.len);
+				close(fd);
+			}
+			free (filename);
+			if (mode == MODE_SERVERONLINE)
+			{
+				content internal_struct;
+				char *url, *userpwd;
+				curl_mime *form = NULL;
+				curl_mimepart *field = NULL;
+				content_init(&internal_struct);
+				url = malloc(strlen(burl) + 30);
+				strcpy(url, burl);
+				strcat(url, "api/gamerzilla/game/image");
+				curl_easy_setopt(curl, CURLOPT_URL, url);
+				form = curl_mime_init(curl);
+				field = curl_mime_addpart(form);
+				curl_mime_data(field, client_content.data, client_content.len);
+				curl_mime_filename(field, "image.png");
+				curl_mime_name(field, "imagefile");
+				field = curl_mime_addpart(form);
+				curl_mime_name(field, "game");
+				curl_mime_data(field, shortname, CURL_ZERO_TERMINATED);
+				curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+				userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
+				strcpy(userpwd, uname);
+				strcat(userpwd, ":");
+				strcat(userpwd, pswd);
+				curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteData);
+				curl_easy_setopt(curl, CURLOPT_WRITEDATA, &internal_struct);
+				CURLcode res = curl_easy_perform(curl);
+				if (res != CURLE_OK)
+					fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+				curl_mime_free(form);
+				free(url);
+				free(userpwd);
+				content_destroy(&internal_struct);
+			}
 			free(shortname);
 			content_destroy(&client_content);
-			content_destroy(&internal_struct);
 		}
 		default:
 			break;
