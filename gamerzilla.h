@@ -13,6 +13,8 @@ typedef struct
 	char *name;
 	char *desc;
 	int max_progress;
+	char *true_image;
+	char *false_image;
 } GamerzillaTrophy;
 
 typedef struct
