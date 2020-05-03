@@ -40,8 +40,8 @@ int main(int argc, char **argv)
 	if (argc == 4)
 		GamerzillaConnect(argv[1], argv[2], argv[3]);
 	int game_id = GamerzillaGameInit(&g);
-	GamerzillaSetTophy(game_id, "Slayer");
-	GamerzillaSetTophyStat(game_id, "Game Master", 2);
+	GamerzillaSetTrophy(game_id, "Slayer");
+	GamerzillaSetTrophyStat(game_id, "Game Master", 2);
 	GamerzillaQuit();
 	return 0;
 }

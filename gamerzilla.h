@@ -27,15 +27,15 @@ typedef struct
 	GamerzillaTrophy *trophy;
 } Gamerzilla;
 
-bool GamerzillaInit(bool server, const char *savedir);
-bool GamerzillaConnect(const char *url, const char *username, const char *password);
-int GamerzillaGameInit(Gamerzilla *g);
-bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
-bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
-bool GamerzillaSetTophy(int game_id, const char *name);
-bool GamerzillaSetTophyStat(int game_id, const char *name, int progress);
-void GamerzillaServerProcess(struct timeval *timeout);
-void GamerzillaQuit();
+extern bool GamerzillaInit(bool server, const char *savedir);
+extern bool GamerzillaConnect(const char *url, const char *username, const char *password);
+extern int GamerzillaGameInit(Gamerzilla *g);
+extern bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
+extern bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
+extern bool GamerzillaSetTrophy(int game_id, const char *name);
+extern bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress);
+extern void GamerzillaServerProcess(struct timeval *timeout);
+extern void GamerzillaQuit();
 
 #ifdef __cplusplus
 }

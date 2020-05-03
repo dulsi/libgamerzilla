@@ -174,6 +174,33 @@ bool GamerzillaInit(bool server, const char *savedir)
 {
 	current.short_name = NULL;
 	save_dir = strdup(savedir);
+	int len = strlen(save_dir);
+	struct stat statbuf;
+	if (0 != stat(save_dir, &statbuf))
+	{
+		int i;
+		for (i = len - 1; i > 0; i--)
+		{
+			if (save_dir[i] == '/')
+			{
+				save_dir[i] = 0;
+				if (0 == stat(save_dir, &statbuf))
+				{
+					save_dir[i] = '/';
+					break;
+				}
+			}
+		}
+		while (i < len)
+		{
+			if (save_dir[i] == 0)
+			{
+				mkdir(save_dir, S_IRWXU);
+				save_dir[i] = '/';
+			}
+			i++;
+		}
+	}
 	if (server)
 	{
 		// Initialize socket
@@ -873,7 +900,7 @@ bool GamerzillaCheckGameInfo(int game_id)
 	}
 }
 
-bool GamerzillaSetTophy(int game_id, const char *name)
+bool GamerzillaSetTrophy(int game_id, const char *name)
 {
 	GamerzillaCheckGameInfo(game_id);
 	for (int i = 0; i < current.numTrophy; i++)
@@ -889,7 +916,7 @@ bool GamerzillaSetTophy(int game_id, const char *name)
 	return true;
 }
 
-bool GamerzillaSetTophyStat(int game_id, const char *name, int progress)
+bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 {
 	GamerzillaCheckGameInfo(game_id);
 	for (int i = 0; i < current.numTrophy; i++)
@@ -969,9 +996,12 @@ static bool GamerzillaServerProcessClient(int fd)
 						strcat(userpwd, ":");
 						strcat(userpwd, pswd);
 						curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
-						char *filename = malloc(strlen(save_dir) + 30 + strlen(name));
+						createImagePath(g.short_name);
+						char *filename = malloc(strlen(save_dir) + 30 + strlen(name) * 2);
 						strcpy(filename, save_dir);
 						strcat(filename, "/image/");
+						strcat(filename, name);
+						strcat(filename, "/");
 						strcat(filename, name);
 						strcat(filename, ".png");
 						int fd = creat(filename, S_IRWXU);
@@ -983,6 +1013,68 @@ static bool GamerzillaServerProcessClient(int fd)
 							if (res != CURLE_OK)
 								fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 							close(fd);
+						}
+						for (int i = 0; i < g.numTrophy; i++)
+						{
+							strcpy(url, burl);
+							strcat(url, "api/gamerzilla/trophy/image/show");
+							postdata = malloc(strlen(name) + strlen(g.trophy[i].name) + 30);
+							strcpy(postdata, "game=");
+							strcat(postdata, name);
+							strcat(postdata, "&trophy=");
+							strcat(postdata, g.trophy[i].name);
+							strcat(postdata, "&achieved=1");
+							curl_easy_setopt(curl, CURLOPT_URL, url);
+							curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+							curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
+							curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+							free(filename);
+							filename = malloc(strlen(save_dir) + 30 + strlen(name) + strlen(g.trophy[i].name));
+							strcpy(filename, save_dir);
+							strcat(filename, "/image/");
+							strcat(filename, name);
+							strcat(filename, "/");
+							int end = strlen(filename);
+							for (int k = 0; g.trophy[i].name[k]; k++)
+							{
+								if (isalnum(g.trophy[i].name[k]))
+								{
+									filename[end] = g.trophy[i].name[k];
+								}
+								else
+								{
+									filename[end] = '_';
+								}
+								end++;
+							}
+							filename[end] = 0;
+							strcat(filename, "1.png");
+							fd = creat(filename, S_IRWXU);
+							if (fd > -1)
+							{
+								curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteFile);
+								curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
+								CURLcode res = curl_easy_perform(curl);
+								if (res != CURLE_OK)
+									fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+								close(fd);
+							}
+							postdata[strlen(postdata) - 1] = '0';
+							curl_easy_setopt(curl, CURLOPT_URL, url);
+							curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+							curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
+							curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+							filename[end] = '0';
+							fd = creat(filename, S_IRWXU);
+							if (fd > -1)
+							{
+								curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteFile);
+								curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
+								CURLcode res = curl_easy_perform(curl);
+								if (res != CURLE_OK)
+									fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+								close(fd);
+							}
 						}
 						free(url);
 						free(filename);
