@@ -24,12 +24,14 @@ typedef struct
 	char *image;
 	int version;
 	int numTrophy;
+	int szTrophy;
 	GamerzillaTrophy *trophy;
 } Gamerzilla;
 
 extern bool GamerzillaInit(bool server, const char *savedir);
 extern bool GamerzillaConnect(const char *url, const char *username, const char *password);
 extern int GamerzillaGameInit(Gamerzilla *g);
+extern void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_progress, char *true_image, char *false_image);
 extern bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
 extern bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
 extern bool GamerzillaSetTrophy(int game_id, const char *name);

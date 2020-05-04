@@ -630,6 +630,36 @@ int GamerzillaGameInit(Gamerzilla *g)
 	return 9999;
 }
 
+void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_progress, char *true_image, char *false_image)
+{
+	if (g->szTrophy == 0)
+	{
+		g->trophy = calloc(16, sizeof(GamerzillaTrophy));
+		g->szTrophy = 16;
+	}
+	else if (g->numTrophy == g->szTrophy)
+	{
+		g->szTrophy *= 2;
+		GamerzillaTrophy *newTrophy = calloc(g->szTrophy, sizeof(GamerzillaTrophy));
+		for (int i = 0; i < g->numTrophy; i++)
+		{
+			newTrophy[i].name = g->trophy[i].name;
+			newTrophy[i].desc = g->trophy[i].desc;
+			newTrophy[i].max_progress = g->trophy[i].max_progress;
+			newTrophy[i].true_image = g->trophy[i].true_image;
+			newTrophy[i].false_image = g->trophy[i].false_image;
+		}
+		free(g->trophy);
+		g->trophy = newTrophy;
+	}
+	g->trophy[g->numTrophy].name = strdup(name);
+	g->trophy[g->numTrophy].desc = strdup(desc);
+	g->trophy[g->numTrophy].max_progress = max_progress;
+	g->trophy[g->numTrophy].true_image = strdup(true_image);
+	g->trophy[g->numTrophy].false_image = strdup(false_image);
+	g->numTrophy++;
+}
+
 bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 {
 	for (int i = 0; i < current.numTrophy; i++)
@@ -918,6 +948,7 @@ bool GamerzillaSetTrophy(int game_id, const char *name)
 
 bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 {
+	bool achieved = false;
 	GamerzillaCheckGameInfo(game_id);
 	for (int i = 0; i < current.numTrophy; i++)
 	{
@@ -925,10 +956,14 @@ bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 		{
 			currentData[i].progress = progress;
 			gamefile_write(&current, currentData);
+			if (progress == current.trophy[i].max_progress)
+				achieved = true;
 			break;
 		}
 	}
 	GamerzillaSetTrophyStat_internal(current.short_name, name, progress);
+	if (achieved)
+		GamerzillaSetTrophy(game_id, name);
 	return true;
 }
 
