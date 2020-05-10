@@ -2,7 +2,11 @@
 #define __gamerzilla_h__
 
 #include <stdbool.h>
+#if defined(_WIN32)
+#include <winsock2.h>
+#else
 #include <sys/select.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {

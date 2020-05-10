@@ -11,9 +11,23 @@
 #include <fcntl.h>
 #include <ctype.h>
 
+#ifdef _WIN32
+#define GAMERZILLA_USETCP
+
+#define mkdir(x,y) _mkdir(x)
+#endif
+
+#define GAMERZILLA_TCPPORT 56924
+
+#ifndef _WIN32
 #include <arpa/inet.h>
 #include <sys/un.h>
 #include <sys/socket.h>
+
+#define SOCKET int
+#define closesocket(x) close(x)
+#define INVALID_SOCKET -1
+#endif
 
 #define MODE_OFFLINE 0
 #define MODE_SERVEROFFLINE 1
@@ -42,8 +56,8 @@ static char **game_list = NULL;
 static Gamerzilla current;
 static TrophyData *currentData = NULL;
 static int remote_game_id = -1;
-static int server_socket;
-static int *client_socket = NULL;
+static SOCKET server_socket = INVALID_SOCKET;
+static SOCKET *client_socket = NULL;
 static int num_client = 0;
 static int size_client = 0;
 static CURL *curl = NULL;
@@ -205,15 +219,30 @@ bool GamerzillaInit(bool server, const char *savedir)
 	{
 		// Initialize socket
 		mode = MODE_SERVEROFFLINE;
+#ifdef GAMERZILLA_USETCP
+		struct sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(GAMERZILLA_TCPPORT);
+		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		server_socket = socket(AF_INET, SOCK_STREAM, 0);
+		if (server_socket == -1)
+			return false;
+		int optval = 1;
+//		setsockopt(server_socket,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval));
+		if (bind(server_socket, (struct sockaddr *) &addr, sizeof(struct sockaddr_in)) == -1)
+			return false;
+#else
 		struct sockaddr_un addr;
 		memset(&addr, 0, sizeof(struct sockaddr_un));
 		addr.sun_family = AF_UNIX;
-		strncpy(&addr.sun_path[1], "Gamerzilla", 10);
+		int len = sprintf(&addr.sun_path[1], "Gamerzilla%d", geteuid());
 		server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (server_socket == -1)
 			return false;
-		if (bind(server_socket, (struct sockaddr *) &addr, sizeof(sa_family_t) + 10 + 1) == -1)
+		if (bind(server_socket, (struct sockaddr *) &addr, sizeof(sa_family_t) + len + 1) == -1)
 			return false;
+#endif
 		if (listen(server_socket, 5) == -1)
 			return false;
 		return true;
@@ -221,19 +250,34 @@ bool GamerzillaInit(bool server, const char *savedir)
 	else
 	{
 		// Try connect to server
+#ifdef GAMERZILLA_USETCP
+		struct sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(GAMERZILLA_TCPPORT);
+		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		server_socket = socket(AF_INET, SOCK_STREAM, 0);
+		if (server_socket == -1)
+			return false;
+		if (connect(server_socket, (struct sockaddr*)&addr, sizeof(struct sockaddr_in)) != -1)
+		{
+			mode = MODE_CONNECTED;
+			return true;
+		}
+#else
 		struct sockaddr_un addr;
 		memset(&addr, 0, sizeof(struct sockaddr_un));
 		addr.sun_family = AF_UNIX;
-		strncpy(&addr.sun_path[1], "Gamerzilla", 10);
+		int len = sprintf(&addr.sun_path[1], "Gamerzilla%d", geteuid());
 		server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (server_socket == -1)
 			return false;
-		if (connect(server_socket, (struct sockaddr*)&addr, sizeof(sa_family_t) + 10 + 1) != -1)
+		if (connect(server_socket, (struct sockaddr*)&addr, sizeof(sa_family_t) + len + 1) != -1)
 		{
 			mode = MODE_CONNECTED;
-			// TODO: Send user ID and confirm on server
 			return true;
 		}
+#endif
 	}
 	return false;
 }
@@ -1572,7 +1616,7 @@ void GamerzillaServerProcess(struct timeval *timeout)
 				bool good = GamerzillaServerProcessClient(client_socket[i]);
 				if (!good)
 				{
-					close(client_socket[i]);
+					closesocket(client_socket[i]);
 					num_client = num_client - 1;
 					while (i < num_client)
 					{
@@ -1598,4 +1642,9 @@ void GamerzillaQuit()
 		free(uname);
 	if (pswd)
 		free(pswd);
+	if (server_socket != INVALID_SOCKET)
+	{
+		closesocket(server_socket);
+		server_socket = INVALID_SOCKET;
+	}
 }
