@@ -15,6 +15,8 @@
 #define GAMERZILLA_USETCP
 
 #define mkdir(x,y) _mkdir(x)
+#define writesocket(a,b,c) send(a,b,c,0)
+#define readsocket(a,b,c) recv(a,b,c,0)
 #endif
 
 #define GAMERZILLA_TCPPORT 56924
@@ -25,6 +27,8 @@
 #include <sys/socket.h>
 
 #define SOCKET int
+#define writesocket(a,b,c) write(a,b,c)
+#define readsocket(a,b,c) read(a,b,c)
 #define closesocket(x) close(x)
 #define INVALID_SOCKET -1
 #endif
@@ -106,7 +110,7 @@ static void content_read(int fd, content *x, ssize_t sz)
 	ssize_t ct;
 	for (ct = 0; ct < sz; )
 	{
-		ct += read(fd, x->data + ct, sz - ct);
+		ct += readsocket(fd, x->data + ct, sz - ct);
 	}
 	x->len = sz;
 }
@@ -152,8 +156,8 @@ static size_t curlWriteData(void *buffer, size_t size, size_t nmemb, void *userp
 
 static size_t curlWriteFile(void *ptr, size_t size, size_t nmemb, void *fd)
 {
-  size_t written = write(*((int *)fd), ptr, size * nmemb);
-  return written;
+	size_t written = fwrite(ptr, 1, size * nmemb, ((FILE *)fd));
+	return written;
 }
 
 static void gamerzillaClear(Gamerzilla *g, bool memFree)
@@ -220,16 +224,22 @@ bool GamerzillaInit(bool server, const char *savedir)
 		// Initialize socket
 		mode = MODE_SERVEROFFLINE;
 #ifdef GAMERZILLA_USETCP
+#ifdef _WIN32
+		WSADATA wsaData;
+		int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+		if (iResult != 0)
+			return false;
+#endif
 		struct sockaddr_in addr;
 		memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(GAMERZILLA_TCPPORT);
 		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 		server_socket = socket(AF_INET, SOCK_STREAM, 0);
-		if (server_socket == -1)
+		if (server_socket == INVALID_SOCKET)
 			return false;
 		int optval = 1;
-//		setsockopt(server_socket,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval));
+		setsockopt(server_socket,SOL_SOCKET,SO_REUSEADDR,(const char*)&optval,sizeof(optval));
 		if (bind(server_socket, (struct sockaddr *) &addr, sizeof(struct sockaddr_in)) == -1)
 			return false;
 #else
@@ -238,7 +248,7 @@ bool GamerzillaInit(bool server, const char *savedir)
 		addr.sun_family = AF_UNIX;
 		int len = sprintf(&addr.sun_path[1], "Gamerzilla%d", geteuid());
 		server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-		if (server_socket == -1)
+		if (server_socket == INVALID_SOCKET)
 			return false;
 		if (bind(server_socket, (struct sockaddr *) &addr, sizeof(sa_family_t) + len + 1) == -1)
 			return false;
@@ -251,6 +261,12 @@ bool GamerzillaInit(bool server, const char *savedir)
 	{
 		// Try connect to server
 #ifdef GAMERZILLA_USETCP
+#ifdef _WIN32
+		WSADATA wsaData;
+		int iResult = WSAStartup(MAKEWORD(2,2), &wsaData);
+		if (iResult != 0)
+			return false;
+#endif
 		struct sockaddr_in addr;
 		memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
@@ -331,13 +347,13 @@ static content GamerzillaGetGameInfo_internal(const char *name)
 		uint8_t cmd = CMD_GETGAMEINFO;
 		uint32_t hostsz = strlen(name);
 		uint32_t sz = htonl(hostsz);
-		write(server_socket, &cmd, sizeof(cmd));
-		write(server_socket, &sz, sizeof(sz));
-		write(server_socket, name, hostsz);
+		writesocket(server_socket, &cmd, sizeof(cmd));
+		writesocket(server_socket, &sz, sizeof(sz));
+		writesocket(server_socket, name, hostsz);
 		ssize_t ct = 0;
 		while (ct != sizeof(sz))
 		{
-			ct += read(server_socket, ((char *)&sz) + ct, sizeof(sz) - ct);
+			ct += readsocket(server_socket, ((char *)&sz) + ct, sizeof(sz) - ct);
 		}
 		hostsz = ntohl(sz);
 		content_read(server_socket, &internal_struct, hostsz);
@@ -382,13 +398,13 @@ static void GamerzillaSetTrophy_internal(const char *game_name, const char *name
 		uint8_t cmd = CMD_SETTROPHY;
 		uint32_t hostsz = strlen(game_name);
 		uint32_t sz = htonl(hostsz);
-		write(server_socket, &cmd, sizeof(cmd));
-		write(server_socket, &sz, sizeof(sz));
-		write(server_socket, game_name, hostsz);
+		writesocket(server_socket, &cmd, sizeof(cmd));
+		writesocket(server_socket, &sz, sizeof(sz));
+		writesocket(server_socket, game_name, hostsz);
 		hostsz = strlen(name);
 		sz = htonl(hostsz);
-		write(server_socket, &sz, sizeof(sz));
-		write(server_socket, name, hostsz);
+		writesocket(server_socket, &sz, sizeof(sz));
+		writesocket(server_socket, name, hostsz);
 	}
 }
 
@@ -431,16 +447,16 @@ static void GamerzillaSetTrophyStat_internal(const char *game_name, const char *
 		uint8_t cmd = CMD_SETTROPHYSTAT;
 		uint32_t hostsz = strlen(game_name);
 		uint32_t sz = htonl(hostsz);
-		write(server_socket, &cmd, sizeof(cmd));
-		write(server_socket, &sz, sizeof(sz));
-		write(server_socket, game_name, hostsz);
+		writesocket(server_socket, &cmd, sizeof(cmd));
+		writesocket(server_socket, &sz, sizeof(sz));
+		writesocket(server_socket, game_name, hostsz);
 		hostsz = strlen(name);
 		sz = htonl(hostsz);
-		write(server_socket, &sz, sizeof(sz));
-		write(server_socket, name, hostsz);
+		writesocket(server_socket, &sz, sizeof(sz));
+		writesocket(server_socket, name, hostsz);
 		hostsz = progress;
 		sz = htonl(hostsz);
-		write(server_socket, &sz, sizeof(sz));
+		writesocket(server_socket, &sz, sizeof(sz));
 	}
 }
 
@@ -786,9 +802,9 @@ static void GamerzillaSetGameInfo_internal(int game_id)
 		uint8_t cmd = CMD_SETGAMEINFO;
 		uint32_t hostsz = strlen(response);
 		uint32_t sz = htonl(hostsz);
-		write(server_socket, &cmd, sizeof(cmd));
-		write(server_socket, &sz, sizeof(sz));
-		write(server_socket, response, hostsz);
+		writesocket(server_socket, &cmd, sizeof(cmd));
+		writesocket(server_socket, &sz, sizeof(sz));
+		writesocket(server_socket, response, hostsz);
 	}
 	free(response);
 	if (mode == MODE_STANDALONE)
@@ -847,10 +863,6 @@ static void GamerzillaSetGameInfo_internal(int game_id)
 			CURLcode res = curl_easy_perform(curl);
 			if (res != CURLE_OK)
 				fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-			char data[4000];
-			memcpy(data, internal_struct.data, internal_struct.len);
-			data[internal_struct.len] = 0;
-			printf("%s\n", data);
 			curl_mime_free(form);
 		}
 		free(url);
@@ -866,23 +878,23 @@ static void GamerzillaSetGameInfo_internal(int game_id)
 		char data[1024];
 		if (0 == stat(current.image, &statbuf[0]))
 		{
-			write(server_socket, &cmd, sizeof(cmd));
-			write(server_socket, &sz, sizeof(sz));
-			write(server_socket, current.short_name, hostsz);
+			writesocket(server_socket, &cmd, sizeof(cmd));
+			writesocket(server_socket, &sz, sizeof(sz));
+			writesocket(server_socket, current.short_name, hostsz);
 			hostsz = statbuf[0].st_size;
 			sz = htonl(hostsz);
-			write(server_socket, &sz, sizeof(sz));
-			int fd = open(current.image, O_RDONLY);
+			writesocket(server_socket, &sz, sizeof(sz));
+			FILE *f = fopen(current.image, "rb");
 			while (hostsz > 0)
 			{
-				size_t ct = read(fd, data, 1024);
+				size_t ct = fread(data, 1, 1024, f);
 				if (ct > 0)
 				{
 					hostsz -= ct;
-					write(server_socket, data, ct);
+					writesocket(server_socket, data, ct);
 				}
 			}
-			close(fd);
+			fclose(f);
 		}
 		for (int i = 0; i < current.numTrophy; i++)
 		{
@@ -891,41 +903,41 @@ static void GamerzillaSetGameInfo_internal(int game_id)
 			sz = htonl(hostsz);
 			if ((0 == stat(current.trophy[i].true_image, &statbuf[0])) && (0 == stat(current.trophy[i].false_image, &statbuf[1])))
 			{
-				write(server_socket, &cmd, sizeof(cmd));
-				write(server_socket, &sz, sizeof(sz));
-				write(server_socket, current.short_name, hostsz);
+				writesocket(server_socket, &cmd, sizeof(cmd));
+				writesocket(server_socket, &sz, sizeof(sz));
+				writesocket(server_socket, current.short_name, hostsz);
 				hostsz = strlen(current.trophy[i].name);
 				sz = htonl(hostsz);
-				write(server_socket, &sz, sizeof(sz));
-				write(server_socket, current.trophy[i].name, hostsz);
+				writesocket(server_socket, &sz, sizeof(sz));
+				writesocket(server_socket, current.trophy[i].name, hostsz);
 				hostsz = statbuf[0].st_size;
 				sz = htonl(hostsz);
-				write(server_socket, &sz, sizeof(sz));
-				int fd = open(current.trophy[i].true_image, O_RDONLY);
+				writesocket(server_socket, &sz, sizeof(sz));
+				FILE *f = fopen(current.trophy[i].true_image, "rb");
 				while (hostsz > 0)
 				{
-					size_t ct = read(fd, data, 1024);
+					size_t ct = fread(data, 1, 1024, f);
 					if (ct > 0)
 					{
 						hostsz -= ct;
-						write(server_socket, data, ct);
+						writesocket(server_socket, data, ct);
 					}
 				}
-				close(fd);
+				fclose(f);
 				hostsz = statbuf[1].st_size;
 				sz = htonl(hostsz);
-				write(server_socket, &sz, sizeof(sz));
-				fd = open(current.trophy[i].false_image, O_RDONLY);
+				writesocket(server_socket, &sz, sizeof(sz));
+				f = fopen(current.trophy[i].false_image, "rb");
 				while (hostsz > 0)
 				{
-					size_t ct = read(fd, data, 1024);
+					size_t ct = fread(data, 1, 1024, f);
 					if (ct > 0)
 					{
 						hostsz -= ct;
-						write(server_socket, data, ct);
+						writesocket(server_socket, data, ct);
 					}
 				}
-				close(fd);
+				fclose(f);
 			}
 		}
 	}
@@ -1011,10 +1023,10 @@ bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 	return true;
 }
 
-static bool GamerzillaServerProcessClient(int fd)
+static bool GamerzillaServerProcessClient(SOCKET fd)
 {
 	uint8_t cmd;
-	ssize_t res = read(fd, &cmd, sizeof(cmd));
+	ssize_t res = readsocket(fd, &cmd, sizeof(cmd));
 	if (res != 1)
 	{
 		return false;
@@ -1028,7 +1040,7 @@ static bool GamerzillaServerProcessClient(int fd)
 			content client_content;
 			content internal_struct;
 			ssize_t ct = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_init(&client_content);
 			content_init(&internal_struct);
@@ -1083,15 +1095,15 @@ static bool GamerzillaServerProcessClient(int fd)
 						strcat(filename, "/");
 						strcat(filename, name);
 						strcat(filename, ".png");
-						int fd = creat(filename, S_IRWXU);
-						if (fd > -1)
+						FILE *f = fopen(filename, "wb");
+						if (f)
 						{
 							curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteFile);
-							curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
+							curl_easy_setopt(curl, CURLOPT_WRITEDATA, f);
 							CURLcode res = curl_easy_perform(curl);
 							if (res != CURLE_OK)
 								fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-							close(fd);
+							fclose(f);
 						}
 						for (int i = 0; i < g.numTrophy; i++)
 						{
@@ -1128,15 +1140,15 @@ static bool GamerzillaServerProcessClient(int fd)
 							}
 							filename[end] = 0;
 							strcat(filename, "1.png");
-							fd = creat(filename, S_IRWXU);
-							if (fd > -1)
+							f = fopen(filename, "wb");
+							if (f)
 							{
 								curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteFile);
-								curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
+								curl_easy_setopt(curl, CURLOPT_WRITEDATA, f);
 								CURLcode res = curl_easy_perform(curl);
 								if (res != CURLE_OK)
 									fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-								close(fd);
+								fclose(f);
 							}
 							postdata[strlen(postdata) - 1] = '0';
 							curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -1144,15 +1156,15 @@ static bool GamerzillaServerProcessClient(int fd)
 							curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
 							curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
 							filename[end] = '0';
-							fd = creat(filename, S_IRWXU);
-							if (fd > -1)
+							f = fopen(filename, "wb");
+							if (f)
 							{
 								curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteFile);
-								curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fd);
+								curl_easy_setopt(curl, CURLOPT_WRITEDATA, f);
 								CURLcode res = curl_easy_perform(curl);
 								if (res != CURLE_OK)
 									fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-								close(fd);
+								fclose(f);
 							}
 						}
 						free(url);
@@ -1166,8 +1178,8 @@ static bool GamerzillaServerProcessClient(int fd)
 			char *response = json_dumps(root, 0);
 			hostsz = strlen(response);
 			sz = htonl(hostsz);
-			write(fd, &sz, sizeof(sz));
-			write(fd, response, hostsz);
+			writesocket(fd, &sz, sizeof(sz));
+			writesocket(fd, response, hostsz);
 			json_decref(root);
 			break;
 		}
@@ -1178,7 +1190,7 @@ static bool GamerzillaServerProcessClient(int fd)
 			content client_content;
 			content internal_struct;
 			ssize_t ct = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_init(&client_content);
 			content_init(&internal_struct);
@@ -1233,7 +1245,7 @@ static bool GamerzillaServerProcessClient(int fd)
 			content client_content;
 			content internal_struct;
 			ssize_t ct = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_init(&client_content);
 			content_init(&internal_struct);
@@ -1242,7 +1254,7 @@ static bool GamerzillaServerProcessClient(int fd)
 			memcpy(game_name, client_content.data, client_content.len);
 			game_name[client_content.len] = 0;
 			client_content.len = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_read(fd, &client_content, hostsz);
 			char *name = malloc(client_content.len + 1);
@@ -1306,13 +1318,13 @@ static bool GamerzillaServerProcessClient(int fd)
 			uint32_t hostsz;
 			content client_content;
 			char *shortname;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			shortname = (char *)malloc(hostsz + 1);
-			read(fd, shortname, hostsz);
+			readsocket(fd, shortname, hostsz);
 			shortname[hostsz] = 0;
 			content_init(&client_content);
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_read(fd, &client_content, hostsz);
 			char *filename = (char *)malloc(strlen(save_dir) + strlen(shortname) * 2 + 20);
@@ -1323,11 +1335,11 @@ static bool GamerzillaServerProcessClient(int fd)
 			strcat(filename, "/");
 			strcat(filename, shortname);
 			strcat(filename, ".png");
-			int fd = creat(filename, S_IRWXU);
-			if (fd > -1)
+			FILE *f = fopen(filename, "wb");
+			if (f)
 			{
-				write(fd, client_content.data, client_content.len);
-				close(fd);
+				fwrite(client_content.data, 1, client_content.len, f);
+				fclose(f);
 			}
 			free (filename);
 			if (mode == MODE_SERVERONLINE)
@@ -1377,7 +1389,7 @@ static bool GamerzillaServerProcessClient(int fd)
 			content client_content;
 			content internal_struct;
 			ssize_t ct = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_init(&client_content);
 			content_init(&internal_struct);
@@ -1386,7 +1398,7 @@ static bool GamerzillaServerProcessClient(int fd)
 			memcpy(game_name, client_content.data, client_content.len);
 			game_name[client_content.len] = 0;
 			client_content.len = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_read(fd, &client_content, hostsz);
 			char *name = malloc(client_content.len + 1);
@@ -1456,22 +1468,22 @@ static bool GamerzillaServerProcessClient(int fd)
 			content false_content;
 			char *shortname;
 			char *trophy_name;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			shortname = (char *)malloc(hostsz + 1);
-			read(fd, shortname, hostsz);
+			readsocket(fd, shortname, hostsz);
 			shortname[hostsz] = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			trophy_name = (char *)malloc(hostsz + 1);
-			read(fd, trophy_name, hostsz);
+			readsocket(fd, trophy_name, hostsz);
 			trophy_name[hostsz] = 0;
 			content_init(&true_content);
 			content_init(&false_content);
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_read(fd, &true_content, hostsz);
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_read(fd, &false_content, hostsz);
 			createImagePath(shortname);
@@ -1495,18 +1507,18 @@ static bool GamerzillaServerProcessClient(int fd)
 			}
 			filename[end] = 0;
 			strcat(filename, "1.png");
-			int fd = creat(filename, S_IRWXU);
-			if (fd > -1)
+			FILE *f = fopen(filename, "wb");
+			if (f)
 			{
-				write(fd, true_content.data, true_content.len);
-				close(fd);
+				fwrite(true_content.data, 1, true_content.len, f);
+				fclose(f);
 			}
 			filename[end] = '0';
-			fd = creat(filename, S_IRWXU);
-			if (fd > -1)
+			f = fopen(filename, "wb");
+			if (f)
 			{
-				write(fd, false_content.data, false_content.len);
-				close(fd);
+				fwrite(false_content.data, 1, false_content.len, f);
+				fclose(f);
 			}
 			free (filename);
 			if (mode == MODE_SERVERONLINE)
@@ -1593,13 +1605,13 @@ void GamerzillaServerProcess(struct timeval *timeout)
 					if (size_client == 0)
 					{
 						size_client = 100;
-						client_socket = (int*)malloc(sizeof(int) * size_client);
+						client_socket = (SOCKET *)malloc(sizeof(SOCKET) * size_client);
 					}
 					else
 					{
-						int *old_client = client_socket;
+						SOCKET *old_client = client_socket;
 						size_client *= 2;
-						client_socket = (int*)malloc(sizeof(int) * size_client);
+						client_socket = (SOCKET *)malloc(sizeof(int) * size_client);
 						for (int i = 0; i < num_client; i++)
 							client_socket[i] = old_client[i];
 						free(old_client);
@@ -1646,5 +1658,8 @@ void GamerzillaQuit()
 	{
 		closesocket(server_socket);
 		server_socket = INVALID_SOCKET;
+#ifdef _WIN32
+		WSACleanup();
+#endif
 	}
 }
