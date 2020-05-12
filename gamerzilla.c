@@ -1,7 +1,6 @@
 #include <gamerzilla.h>
 #include <curl/curl.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <unistd.h>
@@ -15,8 +14,8 @@
 #define GAMERZILLA_USETCP
 
 #define mkdir(x,y) _mkdir(x)
-#define writesocket(a,b,c) send(a,b,c,0)
-#define readsocket(a,b,c) recv(a,b,c,0)
+#define writesocket(a,b,c) send(a,(const char *)b,c,0)
+#define readsocket(a,b,c) recv(a,(char *)b,c,0)
 #endif
 
 #define GAMERZILLA_TCPPORT 56924
@@ -39,12 +38,33 @@
 #define MODE_STANDALONE 3
 #define MODE_SERVERONLINE 4
 
-#define CMD_GETGAMEINFO 0
-#define CMD_SETGAMEINFO 1
-#define CMD_SETTROPHY 2
-#define CMD_SETGAMEIMAGE 3
-#define CMD_SETTROPHYSTAT 4
-#define CMD_SETTROPHYIMAGE 5
+#define CMD_QUIT 0
+#define CMD_GETGAMEINFO 1
+#define CMD_SETGAMEINFO 2
+#define CMD_SETTROPHY 3
+#define CMD_SETGAMEIMAGE 4
+#define CMD_SETTROPHYSTAT 5
+#define CMD_SETTROPHYIMAGE 6
+#define MAX_CMD 7
+
+#define GamerzillaLog(l, s1, s2) \
+	{ \
+		if (logLevel >= l) \
+		{ \
+			fprintf(logFile, "%s%s\n", (s1), (s2)); \
+			fflush(logFile); \
+		} \
+	}
+
+static const char *cmdName[] = {
+	"Quit",
+	"Get Game Info",
+	"Set Game Info",
+	"Set Trophy",
+	"Set Game Image",
+	"Set Trophy Stat",
+	"Set Trophy Image"
+};
 
 typedef struct {
 	bool achieved;
@@ -66,6 +86,8 @@ static int num_client = 0;
 static int size_client = 0;
 static CURL *curl = NULL;
 static char *save_dir = NULL;
+static int logLevel = 0;
+static FILE *logFile = NULL;
 
 typedef struct {
 	size_t size;
@@ -562,7 +584,7 @@ static bool GamerzillaMerge(Gamerzilla *g, TrophyData **t, json_t *root)
 					tmp = json_object_get(item, "trophy_desc");
 					newTrophy[i].desc = strdup(json_string_value(tmp));
 					tmp = json_object_get(item, "max_progress");
-					newTrophy[i].max_progress = atol(json_string_value(ver));
+					newTrophy[i].max_progress = atol(json_string_value(tmp));
 					tmp = json_object_get(root, "trueimage");
 					if (json_is_string(tmp))
 					{
@@ -579,7 +601,7 @@ static bool GamerzillaMerge(Gamerzilla *g, TrophyData **t, json_t *root)
 					}
 					else
 					{
-						newTrophy[i].false_image = strdup("trueimage.png");
+						newTrophy[i].false_image = strdup("falseimage.png");
 					}
 					for (int k = 0; k < g->numTrophy; k++)
 					{
@@ -1031,8 +1053,11 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 	{
 		return false;
 	}
+	GamerzillaLog(1, "Command: ", ((cmd <= MAX_CMD) ? cmdName[cmd] : "Unknown Command"));
 	switch (cmd)
 	{
+		case CMD_QUIT:
+			return false;
 		case CMD_GETGAMEINFO:
 		{
 			uint32_t sz;
@@ -1642,6 +1667,11 @@ void GamerzillaServerProcess(struct timeval *timeout)
 
 void GamerzillaQuit()
 {
+	if (mode == MODE_CONNECTED)
+	{
+		uint8_t cmd = CMD_QUIT;
+		writesocket(server_socket, &cmd, sizeof(cmd));
+	}
 	if (current.short_name)
 		gamerzillaClear(&current, true);
 	if (currentData)
@@ -1662,4 +1692,10 @@ void GamerzillaQuit()
 		WSACleanup();
 #endif
 	}
+}
+
+void GamerzillaSetLog(int level, FILE *f)
+{
+	logLevel = level;
+	logFile = f;
 }

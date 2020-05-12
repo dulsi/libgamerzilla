@@ -7,6 +7,7 @@
 #else
 #include <sys/select.h>
 #endif
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,8 @@ extern bool GamerzillaSetTrophy(int game_id, const char *name);
 extern bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress);
 extern void GamerzillaServerProcess(struct timeval *timeout);
 extern void GamerzillaQuit();
+
+extern void GamerzillaSetLog(int level, FILE *f);
 
 #ifdef __cplusplus
 }

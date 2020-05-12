@@ -5,6 +5,7 @@
 int main(int argc, char **argv)
 {
 	bool init = GamerzillaInit(true, "./server/");
+	GamerzillaSetLog(1, stdout);
 	if (!init)
 	{
 		fprintf(stderr, "Failed to start server\n");
