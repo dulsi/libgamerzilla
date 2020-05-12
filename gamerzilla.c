@@ -1429,7 +1429,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			char *name = malloc(client_content.len + 1);
 			memcpy(name, client_content.data, client_content.len);
 			name[client_content.len] = 0;
-			read(fd, &sz, sizeof(sz));
+			readsocket(fd, &sz, sizeof(sz));
 			progress = ntohl(sz);
 			Gamerzilla g;
 			TrophyData *t = NULL;
@@ -1667,11 +1667,6 @@ void GamerzillaServerProcess(struct timeval *timeout)
 
 void GamerzillaQuit()
 {
-	if (mode == MODE_CONNECTED)
-	{
-		uint8_t cmd = CMD_QUIT;
-		writesocket(server_socket, &cmd, sizeof(cmd));
-	}
 	if (current.short_name)
 		gamerzillaClear(&current, true);
 	if (currentData)
