@@ -350,6 +350,7 @@ static content GamerzillaGetGameInfo_internal(const char *name)
 		strcat(url, "api/gamerzilla/game");
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
 		userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
 		strcpy(userpwd, uname);
 		strcat(userpwd, ":");
@@ -385,7 +386,7 @@ static content GamerzillaGetGameInfo_internal(const char *name)
 
 static void GamerzillaSetTrophy_internal(const char *game_name, const char *name)
 {
-	if (mode == MODE_STANDALONE)
+	if ((mode == MODE_STANDALONE) || (mode == MODE_SERVERONLINE))
 	{
 		char *postdata = malloc(strlen(game_name) + strlen(name) + 30);
 		strcpy(postdata, "game=");
@@ -400,6 +401,7 @@ static void GamerzillaSetTrophy_internal(const char *game_name, const char *name
 		strcat(url, "api/gamerzilla/trophy/set");
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
 		userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
 		strcpy(userpwd, uname);
 		strcat(userpwd, ":");
@@ -432,7 +434,7 @@ static void GamerzillaSetTrophy_internal(const char *game_name, const char *name
 
 static void GamerzillaSetTrophyStat_internal(const char *game_name, const char *name, int progress)
 {
-	if (mode == MODE_STANDALONE)
+	if ((mode == MODE_STANDALONE) || (mode == MODE_SERVERONLINE))
 	{
 		char *postdata = malloc(strlen(game_name) + strlen(name) + 100);
 		strcpy(postdata, "game=");
@@ -449,6 +451,7 @@ static void GamerzillaSetTrophyStat_internal(const char *game_name, const char *
 		strcat(url, "api/gamerzilla/trophy/set/stat");
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
 		userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
 		strcpy(userpwd, uname);
 		strcat(userpwd, ":");
@@ -804,6 +807,7 @@ static void GamerzillaSetGameInfo_internal(int game_id)
 		strcat(url, "api/gamerzilla/game/add");
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
 		userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
 		strcpy(userpwd, uname);
 		strcat(userpwd, ":");
@@ -1306,31 +1310,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			}
 			if (mode == MODE_SERVERONLINE)
 			{
-				char *postdata = malloc(strlen(game_name) + strlen(name) + 40);
-				strcpy(postdata, "game=");
-				strcat(postdata, game_name);
-				strcat(postdata, "&trophy=");
-				strcat(postdata, name);
-				char *url, *userpwd;
-				url = malloc(strlen(burl) + 20);
-				strcpy(url, burl);
-				strcat(url, "api/gamerzilla/trophy/set");
-				curl_easy_setopt(curl, CURLOPT_URL, url);
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
-				userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
-				strcpy(userpwd, uname);
-				strcat(userpwd, ":");
-				strcat(userpwd, pswd);
-				curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
-				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteData);
-				curl_easy_setopt(curl, CURLOPT_WRITEDATA, &internal_struct);
-				CURLcode res = curl_easy_perform(curl);
-				if (res != CURLE_OK)
-					fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-				free(url);
-				free(userpwd);
-				content_destroy(&internal_struct);
+				GamerzillaSetTrophy_internal(game_name, name);
 			}
 			free(game_name);
 			free(name);
@@ -1452,33 +1432,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			}
 			if (mode == MODE_SERVERONLINE)
 			{
-				char *postdata = malloc(strlen(game_name) + strlen(name) + 100);
-				strcpy(postdata, "game=");
-				strcat(postdata, game_name);
-				strcat(postdata, "&trophy=");
-				strcat(postdata, name);
-				strcat(postdata, "&progress=");
-				sprintf(postdata + strlen(postdata), "%d", progress);
-				char *url, *userpwd;
-				url = malloc(strlen(burl) + 40);
-				strcpy(url, burl);
-				strcat(url, "api/gamerzilla/trophy/set/stat");
-				curl_easy_setopt(curl, CURLOPT_URL, url);
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postdata);
-				curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, strlen(postdata));
-				userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
-				strcpy(userpwd, uname);
-				strcat(userpwd, ":");
-				strcat(userpwd, pswd);
-				curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
-				curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteData);
-				curl_easy_setopt(curl, CURLOPT_WRITEDATA, &internal_struct);
-				CURLcode res = curl_easy_perform(curl);
-				if (res != CURLE_OK)
-					fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-				free(url);
-				free(userpwd);
-				content_destroy(&internal_struct);
+				GamerzillaSetTrophyStat_internal(game_name, name, progress);
 			}
 			free(game_name);
 			free(name);
