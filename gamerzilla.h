@@ -36,9 +36,12 @@ typedef struct
 extern bool GamerzillaInit(bool server, const char *savedir);
 extern bool GamerzillaConnect(const char *url, const char *username, const char *password);
 extern int GamerzillaGameInit(Gamerzilla *g);
+extern int GamerzillaGameGet(const char *short_name);
 extern void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_progress, char *true_image, char *false_image);
+extern char *GamerzillaGetGameImage(int game_id);
 extern bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
 extern bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
+extern char *GamerzillaGetTrophyImage(int game_id, const char *name, bool achieved);
 extern bool GamerzillaSetTrophy(int game_id, const char *name);
 extern bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress);
 extern void GamerzillaServerProcess(struct timeval *timeout);

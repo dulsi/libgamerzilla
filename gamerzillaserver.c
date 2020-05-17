@@ -11,7 +11,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to start server\n");
 		return 1;
 	}
-	GamerzillaConnect(argv[1], argv[2], argv[3]);
+	if (argc == 4)
+		GamerzillaConnect(argv[1], argv[2], argv[3]);
 	while (true)
 	{
 		GamerzillaServerProcess(NULL);
