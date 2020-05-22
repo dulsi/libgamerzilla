@@ -1196,12 +1196,33 @@ int GamerzillaGameInit(Gamerzilla *g)
 		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name);
 		json_error_t error;
 		root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
-		bool update = GamerzillaMerge(curl[0], &current, &currentData, root);
-		json_decref(root);
-		if (update)
+		bool needSend = false;
+		if (root)
 		{
-			gamefile_write(&current, currentData);
+			bool update = GamerzillaMerge(curl[0], &current, &currentData, root);
+			json_t *ver = json_object_get(root, "version");
+			if (json_is_string(ver))
+			{
+				int dbVersion = atol(json_string_value(ver));
+				// Should compare everything but trust version for now.
+				if (dbVersion < current.version)
+					needSend = true;
+			}
+			else
+			{
+				needSend = true;
+			}
+			json_decref(root);
+			if (update)
+			{
+				gamefile_write(&current, currentData);
+			}
 		}
+		if (needSend)
+		{
+			GamerzillaSetGameInfo_internal(curl[0], &current);
+		}
+		remote_game_id = 0;
 	}
 	return GAMEID_CURRENT;
 }
@@ -1264,6 +1285,34 @@ void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_prog
 	g->numTrophy++;
 }
 
+bool GamerzillaCheckGameInfo(CURL *c, int game_id)
+{
+	if ((mode == MODE_SERVEROFFLINE) || (mode == MODE_SERVERONLINE))
+	{
+		if (game_id < game_num)
+		{
+			if (strcmp(current.short_name, game_list[game_id]) == 0)
+				return true;
+			gamerzillaClear(&current, true);
+			if (currentData)
+				free(currentData);
+			currentData = NULL;
+			// Read save file
+			json_t *root = gamefile_read(game_list[game_id]);
+			if (root)
+			{
+				GamerzillaMerge(c, &current, &currentData, root);
+				return true;
+			}
+			else
+				return false;
+		}
+	}
+	else if (game_id != GAMEID_CURRENT)
+		return false;
+	return true;
+}
+
 char *GamerzillaGetGameImage(int game_id)
 {
 	const char *game_name = NULL;
@@ -1278,6 +1327,7 @@ char *GamerzillaGetGameImage(int game_id)
 
 bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 {
+	GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id);
 	for (int i = 0; i < current.numTrophy; i++)
 	{
 		if (0 == strcmp(name, current.trophy[i].name))
@@ -1291,6 +1341,7 @@ bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 
 bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress)
 {
+	GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id);
 	for (int i = 0; i < current.numTrophy; i++)
 	{
 		if (0 == strcmp(name, current.trophy[i].name))
@@ -1314,52 +1365,10 @@ char *GamerzillaGetTrophyImage(int game_id, const char *name, bool achieved)
 	return GamerzillaGetTrophyImage_internal(game_name, name, achieved);
 }
 
-bool GamerzillaCheckGameInfo(int game_id)
-{
-	if ((mode == MODE_STANDALONE) || (mode == MODE_CONNECTED))
-	{
-		if (remote_game_id == -1)
-		{
-			// Get game info
-			content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name);
-			json_t *root;
-			json_error_t error;
-			root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
-			bool needSend = false;
-			// Send if old
-			if (root)
-			{
-				json_t *ver = json_object_get(root, "version");
-				if (json_is_string(ver))
-				{
-					int dbVersion = atol(json_string_value(ver));
-					// Should compare everything but trust version for now.
-					if (dbVersion < current.version)
-						needSend = true;
-					json_decref(root);
-				}
-				else
-				{
-					needSend = true;
-				}
-			}
-			else
-			{
-				needSend = true;
-			}
-			if (needSend)
-			{
-				GamerzillaSetGameInfo_internal(curl[0], &current);
-			}
-			content_destroy(&internal_struct);
-			remote_game_id = 0;
-		}
-	}
-}
-
 bool GamerzillaSetTrophy(int game_id, const char *name)
 {
-	GamerzillaCheckGameInfo(game_id);
+	if (!GamerzillaCheckGameInfo(curl[0], game_id))
+		return false;
 	for (int i = 0; i < current.numTrophy; i++)
 	{
 		if (0 == strcmp(current.trophy[i].name, name))
@@ -1376,7 +1385,8 @@ bool GamerzillaSetTrophy(int game_id, const char *name)
 bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 {
 	bool achieved = false;
-	GamerzillaCheckGameInfo(game_id);
+	if (!GamerzillaCheckGameInfo(curl[0], game_id))
+		return false;
 	for (int i = 0; i < current.numTrophy; i++)
 	{
 		if (0 == strcmp(current.trophy[i].name, name))
