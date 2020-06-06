@@ -5,6 +5,7 @@ int main(int argc, char **argv)
 {
 	Gamerzilla g;
 	GamerzillaTrophy trophy[5];
+	GamerzillaInitGame(&g);
 	g.short_name = strdup("test");
 	g.name = strdup("Test");
 	g.image = strdup("test.png");
@@ -36,10 +37,10 @@ int main(int argc, char **argv)
 	trophy[4].max_progress = 0;
 	trophy[4].true_image = strdup("true.png");
 	trophy[4].false_image = strdup("false.png");
-	GamerzillaInit(false, "./");
+	GamerzillaStart(false, "./");
 	if (argc == 4)
 		GamerzillaConnect(argv[1], argv[2], argv[3]);
-	int game_id = GamerzillaGameInit(&g);
+	int game_id = GamerzillaSetGame(&g);
 	GamerzillaSetTrophy(game_id, "Slayer");
 	GamerzillaSetTrophyStat(game_id, "Game Master", 2);
 	GamerzillaQuit();

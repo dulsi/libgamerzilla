@@ -215,7 +215,7 @@ static void gamerzillaClear(Gamerzilla *g, bool memFree)
 	g->trophy = NULL;
 }
 
-bool GamerzillaInit(bool server, const char *savedir)
+bool GamerzillaStart(bool server, const char *savedir)
 {
 	current.short_name = NULL;
 	save_dir = strdup(savedir);
@@ -1095,7 +1095,7 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 				{
 					char *dname = strdup(dir->d_name);
 					dname[l - 5] = 0;
-					GamerzillaGameGet(dname);
+					GamerzillaGetGame(dname);
 					Gamerzilla g;
 					TrophyData *t = NULL;
 					gamerzillaClear(&g, false);
@@ -1143,7 +1143,7 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 				if (!found)
 				{
 					GamerzillaLog(1, "Online Data: ", game_name);
-					GamerzillaGameGet(game_name);
+					GamerzillaGetGame(game_name);
 					// Get online data
 					content internal_struct = GamerzillaGetGameInfo_internal(curl[1], game_name);
 					json_error_t error;
@@ -1166,7 +1166,12 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 	return true;
 }
 
-int GamerzillaGameInit(Gamerzilla *g)
+void GamerzillaInitGame(Gamerzilla *g)
+{
+	gamerzillaClear(g, false);
+}
+
+int GamerzillaSetGame(Gamerzilla *g)
 {
 	current.short_name = strdup(g->short_name);
 	current.name = strdup(g->name);
@@ -1227,7 +1232,7 @@ int GamerzillaGameInit(Gamerzilla *g)
 	return GAMEID_CURRENT;
 }
 
-int GamerzillaGameGet(const char *short_name)
+int GamerzillaGetGame(const char *short_name)
 {
 	for (int i = 0; i < game_num; i++)
 	{
