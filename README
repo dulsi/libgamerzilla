@@ -6,16 +6,18 @@ To build - cmake and make. To install, make install.
 
 FOR GAME DEVELOPERS
 
-At the start of your game call the GamerzillaInit and GamerzillaGameInit
-functions. The first should be called with server argument set to false
-and the saveDir a directory to save achievements when offline.
+At the start of your game call the GamerzillaStart, GamerzillaInitGame
+and GamerzillaSetGame functions. The first should be called with server
+argument set to false and the saveDir a directory to save achievements
+when offline.
 
 GamerzillaStart(false, "save/");
 
-For GamerzillaGameInit, you must first populate the Gamerzilla
-structure. The function will make a copy of the structure so it can be
-destroyed after calling the function. The function returns a game ID
-which you will need to pass into other functions.
+GamerzillaInitGame will clear the Gamerzilla structure which is needed
+for GamerzillaSetGame. GamerzillaSetGame will make a copy of the
+structure so it can be destroyed after calling the function. The
+function returns a game ID which you will need to pass into other
+functions.
 
 Gamerzilla g;
 GamerzillaTrophy trophy[1];
