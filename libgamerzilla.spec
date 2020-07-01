@@ -1,7 +1,7 @@
 Summary: Gamerzilla Integration Library
 Name: libgamerzilla
 Version: 0.0.1
-Release: 1%{?dist}
+Release: 2%{?dist}
 License: LGPLv2+
 URL: https://github.com/dulsi/libgamerzilla
 Source0: http://www.identicalsoftware.com/gamerzilla/%{name}-%{version}.tgz
@@ -31,25 +31,26 @@ developing applications that use gamerzilla.
 
 %build
 %cmake
-make %{?_smp_mflags}
+%make_build
 
 %install
 %make_install
 
-%post -p /sbin/ldconfig
-
-%postun -p /sbin/ldconfig
-
 %files
 %doc README
 %license LICENSE
-%{_libdir}/lib*.so.*
+%{_libdir}/libgamerzilla.so.0
+%{_libdir}/libgamerzilla.so.0.1.0
 
 %files devel
-%{_includedir}/gamerzilla/*
-%{_libdir}/lib*.so
+%{_includedir}/gamerzilla/
+%{_libdir}/libgamerzilla.so
 %{_libdir}/pkgconfig/gamerzilla.pc
 
 %changelog
+* Tue Jun 30 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.1-2
+- Specified files more percisely
+- Update to latest macro usage
+
 * Sun May 24 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.1-1
 - Initial spec
