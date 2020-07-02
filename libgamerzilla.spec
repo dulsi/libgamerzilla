@@ -11,7 +11,7 @@ BuildRequires: libcurl-devel
 BuildRequires: cmake
 
 %description
-Gamerzilla is trophy/achievement system for games. It intergrates with a
+Gamerzilla is trophy/achievement system for games. It integrates with a
 hubzilla plugin to display your results online. Games can either connect
 directly to hubzilla or connect to a game launcher with using this
 library.
@@ -49,7 +49,7 @@ developing applications that use gamerzilla.
 
 %changelog
 * Tue Jun 30 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.1-2
-- Specified files more percisely
+- Specified files more precisely
 - Update to latest macro usage
 
 * Sun May 24 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.1-1
