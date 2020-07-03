@@ -6,6 +6,7 @@ License: LGPLv2+
 URL: https://github.com/dulsi/libgamerzilla
 Source0: http://www.identicalsoftware.com/gamerzilla/%{name}-%{version}.tgz
 BuildRequires: gcc
+BuildRequires: gcc-c++
 BuildRequires: jansson-devel
 BuildRequires: libcurl-devel
 BuildRequires: cmake
