@@ -39,3 +39,4 @@ file(GLOB HEADERS *.h)
 install(FILES ${HEADERS} DESTINATION include/gamerzilla)
 
 install(FILES gamerzilla.pc DESTINATION "lib${LIB_SUFFIX}/pkgconfig")
+install(FILES gamerzilla.vapi gamerzilla.deps DESTINATION share/vala/vapi)

@@ -81,6 +81,8 @@ static char *pswd = NULL;
 static int game_num = 0;
 static int game_sz = 0;
 static char **game_list = NULL;
+static Gamerzilla **game_info = NULL;
+static TrophyData **game_data = NULL;
 static Gamerzilla current;
 static TrophyData *currentData = NULL;
 static int remote_game_id = -1;
@@ -218,7 +220,15 @@ static void gamerzillaClear(Gamerzilla *g, bool memFree)
 bool GamerzillaStart(bool server, const char *savedir)
 {
 	current.short_name = NULL;
-	save_dir = strdup(savedir);
+	if (savedir[0] == '~')
+	{
+		char *home = getenv("HOME");
+		save_dir = malloc(strlen(home) + strlen(savedir));
+		strcpy(save_dir, home);
+		strcat(save_dir, savedir + 1);
+	}
+	else
+		save_dir = strdup(savedir);
 	int len = strlen(save_dir);
 	struct stat statbuf;
 	if (0 != stat(save_dir, &statbuf))
@@ -1243,21 +1253,48 @@ int GamerzillaGetGame(const char *short_name)
 	{
 		game_sz = 100;
 		game_list = malloc(sizeof(char *) * game_sz);
+		game_info = malloc(sizeof(Gamerzilla *) * game_sz);
+		game_data = malloc(sizeof(GamerzillaTrophy **) * game_sz);
 	}
 	else if (game_sz == game_num)
 	{
 		game_sz *= 2;
 		char **new_game_list = malloc(sizeof(char *) * game_sz);
+		Gamerzilla **new_game_info = malloc(sizeof(Gamerzilla *) * game_sz);
+		TrophyData **new_game_data = malloc(sizeof(TrophyData *) * game_sz);
 		for (int i = 0; i < game_num; i++)
 		{
 			new_game_list[i] = game_list[i];
+			new_game_info[i] = game_info[i];
+			new_game_data[i] = game_data[i];
 		}
 		free(game_list);
 		game_list = new_game_list;
+		free(game_info);
+		game_info = new_game_info;
+		free(game_data);
+		game_data = new_game_data;
 	}
 	game_list[game_num] = strdup(short_name);
+	game_info[game_num] = NULL;
+	game_data[game_num] = NULL;
 	game_num++;
 	return game_num - 1;
+}
+
+void GamerzillaFreeGame(int game_id)
+{
+	if (game_id < game_num)
+	{
+		if (game_info[game_id])
+		{
+			gamerzillaClear(game_info[game_id], true);
+			free(game_info[game_id]);
+			game_info[game_id] = NULL;
+			free(game_data[game_id]);
+			game_data[game_id] = NULL;
+		}
+	}
 }
 
 void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_progress, char *true_image, char *false_image)
@@ -1290,32 +1327,37 @@ void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_prog
 	g->numTrophy++;
 }
 
-bool GamerzillaCheckGameInfo(CURL *c, int game_id)
+bool GamerzillaCheckGameInfo(CURL *c, int game_id, Gamerzilla **info, TrophyData **data)
 {
 	if ((mode == MODE_SERVEROFFLINE) || (mode == MODE_SERVERONLINE))
 	{
 		if (game_id < game_num)
 		{
-			if (strcmp(current.short_name, game_list[game_id]) == 0)
-				return true;
-			gamerzillaClear(&current, true);
-			if (currentData)
-				free(currentData);
-			currentData = NULL;
-			// Read save file
-			json_t *root = gamefile_read(game_list[game_id]);
-			if (root)
+			if (game_info[game_id] == NULL)
 			{
-				GamerzillaMerge(c, &current, &currentData, root);
-				return true;
+				game_info[game_id] = malloc(sizeof(Gamerzilla));
+				gamerzillaClear(&current, false);
+				// Read save file
+				json_t *root = gamefile_read(game_list[game_id]);
+				if (root)
+				{
+					GamerzillaMerge(c, game_info[game_id], &game_data[game_id], root);
+				}
 			}
-			else
+			if (game_info[game_id] == NULL)
 				return false;
+			*info = game_info[game_id];
+			*data = game_data[game_id];
+			return true;
 		}
 	}
-	else if (game_id != GAMEID_CURRENT)
-		return false;
-	return true;
+	else if (game_id == GAMEID_CURRENT)
+	{
+		*info = &current;
+		*data = currentData;
+		return true;
+	}
+	return false;
 }
 
 char *GamerzillaGetGameImage(int game_id)
@@ -1332,12 +1374,14 @@ char *GamerzillaGetGameImage(int game_id)
 
 bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 {
-	GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id);
-	for (int i = 0; i < current.numTrophy; i++)
+	Gamerzilla *info;
+	TrophyData *data;
+	GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id, &info, &data);
+	for (int i = 0; i < info->numTrophy; i++)
 	{
-		if (0 == strcmp(name, current.trophy[i].name))
+		if (0 == strcmp(name, info->trophy[i].name))
 		{
-			*achieved = currentData[i].achieved;
+			*achieved = data->achieved;
 			return true;
 		}
 	}
@@ -1346,12 +1390,14 @@ bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 
 bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress)
 {
-	GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id);
-	for (int i = 0; i < current.numTrophy; i++)
+	Gamerzilla *info;
+	TrophyData *data;
+	GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id, &info, &data);
+	for (int i = 0; i < info->numTrophy; i++)
 	{
-		if (0 == strcmp(name, current.trophy[i].name))
+		if (0 == strcmp(name, info->trophy[i].name))
 		{
-			*progress = currentData[i].progress;
+			*progress = data->progress;
 			return true;
 		}
 	}
@@ -1372,38 +1418,42 @@ char *GamerzillaGetTrophyImage(int game_id, const char *name, bool achieved)
 
 bool GamerzillaSetTrophy(int game_id, const char *name)
 {
-	if (!GamerzillaCheckGameInfo(curl[0], game_id))
+	Gamerzilla *info;
+	TrophyData *data;
+	if (!GamerzillaCheckGameInfo(curl[0], game_id, &info, &data))
 		return false;
-	for (int i = 0; i < current.numTrophy; i++)
+	for (int i = 0; i < info->numTrophy; i++)
 	{
-		if (0 == strcmp(current.trophy[i].name, name))
+		if (0 == strcmp(info->trophy[i].name, name))
 		{
-			currentData[i].achieved = true;
-			gamefile_write(&current, currentData);
+			data[i].achieved = true;
+			gamefile_write(info, data);
 			break;
 		}
 	}
-	GamerzillaSetTrophy_internal(curl[0], current.short_name, name);
+	GamerzillaSetTrophy_internal(curl[0], info->short_name, name);
 	return true;
 }
 
 bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 {
+	Gamerzilla *info;
+	TrophyData *data;
 	bool achieved = false;
-	if (!GamerzillaCheckGameInfo(curl[0], game_id))
+	if (!GamerzillaCheckGameInfo(curl[0], game_id, &info, &data))
 		return false;
-	for (int i = 0; i < current.numTrophy; i++)
+	for (int i = 0; i < info->numTrophy; i++)
 	{
-		if (0 == strcmp(current.trophy[i].name, name))
+		if (0 == strcmp(info->trophy[i].name, name))
 		{
-			currentData[i].progress = progress;
-			gamefile_write(&current, currentData);
-			if (progress == current.trophy[i].max_progress)
+			data[i].progress = progress;
+			gamefile_write(info, data);
+			if (progress == info->trophy[i].max_progress)
 				achieved = true;
 			break;
 		}
 	}
-	GamerzillaSetTrophyStat_internal(curl[0], current.short_name, name, progress);
+	GamerzillaSetTrophyStat_internal(curl[0], info->short_name, name, progress);
 	if (achieved)
 		GamerzillaSetTrophy(game_id, name);
 	return true;
