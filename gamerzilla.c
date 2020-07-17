@@ -728,7 +728,7 @@ static bool GamerzillaMerge(CURL *c, Gamerzilla *g, TrophyData **t, json_t *root
 					newTrophy[i].desc = strdup(json_string_value(tmp));
 					tmp = json_object_get(item, "max_progress");
 					newTrophy[i].max_progress = atol(json_string_value(tmp));
-					tmp = json_object_get(root, "trueimage");
+					tmp = json_object_get(item, "trueimage");
 					if (json_is_string(tmp))
 					{
 						newTrophy[i].true_image = strdup(json_string_value(tmp));
@@ -737,7 +737,7 @@ static bool GamerzillaMerge(CURL *c, Gamerzilla *g, TrophyData **t, json_t *root
 					{
 						newTrophy[i].true_image = strdup("trueimage.png");
 					}
-					tmp = json_object_get(root, "falseimage");
+					tmp = json_object_get(item, "falseimage");
 					if (json_is_string(tmp))
 					{
 						newTrophy[i].false_image = strdup(json_string_value(tmp));
@@ -1200,6 +1200,77 @@ int GamerzillaSetGame(Gamerzilla *g)
 	currentData = (TrophyData *)calloc(current.numTrophy, sizeof(TrophyData));
 	// Read save file
 	json_t *root = gamefile_read(current.short_name);
+	if (root)
+	{
+		GamerzillaMerge(curl[0], &current, &currentData, root);
+		json_decref(root);
+	}
+	if (mode != MODE_OFFLINE)
+	{
+		// Get online data
+		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name);
+		json_error_t error;
+		root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
+		bool needSend = false;
+		if (root)
+		{
+			bool update = GamerzillaMerge(curl[0], &current, &currentData, root);
+			json_t *ver = json_object_get(root, "version");
+			if (json_is_string(ver))
+			{
+				int dbVersion = atol(json_string_value(ver));
+				// Should compare everything but trust version for now.
+				if (dbVersion < current.version)
+					needSend = true;
+			}
+			else
+			{
+				needSend = true;
+			}
+			json_decref(root);
+			if (update)
+			{
+				gamefile_write(&current, currentData);
+			}
+		}
+		if (needSend)
+		{
+			GamerzillaSetGameInfo_internal(curl[0], &current);
+		}
+		remote_game_id = 0;
+	}
+	return GAMEID_CURRENT;
+}
+
+static char *strprefix(const char *prefix, char *orig)
+{
+	char *tmp = malloc(strlen(prefix) + strlen(orig) + 1);
+	strcpy(tmp, prefix);
+	strcat(tmp, orig);
+	free(orig);
+	return tmp;
+}
+
+int GamerzillaSetGameFromFile(const char *filename, const char *datadir)
+{
+	GamerzillaInitGame(&current);
+	json_error_t error;
+	json_t *root = json_load_file(filename, 0, &error);
+	if (root)
+	{
+		GamerzillaMerge(curl[0], &current, &currentData, root);
+		current.image = strprefix(datadir, current.image);
+		for (int i = 0; i < current.numTrophy; i++)
+		{
+			printf("%s\n", current.trophy[i].true_image);
+			current.trophy[i].true_image = strprefix(datadir, current.trophy[i].true_image);
+			printf("%s\n", current.trophy[i].true_image);
+			current.trophy[i].false_image = strprefix(datadir, current.trophy[i].false_image);
+		}
+		json_decref(root);
+	}
+	// Read save file
+	root = gamefile_read(current.short_name);
 	if (root)
 	{
 		GamerzillaMerge(curl[0], &current, &currentData, root);
