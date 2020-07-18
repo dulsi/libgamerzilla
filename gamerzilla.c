@@ -1037,7 +1037,7 @@ static void GamerzillaSetGameInfo_internal(CURL *c, Gamerzilla *g)
 	}
 }
 
-static void GamerzillaSync_internal(CURL *c, const char *short_name, Gamerzilla *g, TrophyData **t)
+static bool GamerzillaSync_internal(CURL *c, const char *short_name, Gamerzilla *g, TrophyData **t)
 {
 	GamerzillaLog(1, "Sync: ", short_name);
 	// Read save file
@@ -1051,31 +1051,38 @@ static void GamerzillaSync_internal(CURL *c, const char *short_name, Gamerzilla 
 		{
 			// Get online data
 			content internal_struct = GamerzillaGetGameInfo_internal(c, short_name);
-			json_error_t error;
-			root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
-			bool update = GamerzillaMerge(c, g, t, root);
-			json_decref(root);
-			if (update)
-			{
-				gamefile_write(g, *t);
-				if (version != g->version)
-				{
-					GamerzillaUpdateImages(c, short_name, g);
-				}
-			}
+			if (internal_struct.len == 0)
+				return false;
 			else
 			{
-				GamerzillaSetGameInfo_internal(c, g);
-				for (int k = 0; k < g->numTrophy; k++)
+				json_error_t error;
+				root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
+				bool update = GamerzillaMerge(c, g, t, root);
+				json_decref(root);
+				if (update)
 				{
-					if ((*t)[k].achieved)
-						GamerzillaSetTrophy_internal(c, g->short_name, g->trophy[k].name);
-					else if ((*t)[k].progress > 0)
-						GamerzillaSetTrophyStat_internal(c, g->short_name, g->trophy[k].name, (*t)[k].progress);
+					gamefile_write(g, *t);
+					if (version != g->version)
+					{
+						GamerzillaUpdateImages(c, short_name, g);
+					}
+				}
+				else
+				{
+					GamerzillaSetGameInfo_internal(c, g);
+					for (int k = 0; k < g->numTrophy; k++)
+					{
+						if ((*t)[k].achieved)
+							GamerzillaSetTrophy_internal(c, g->short_name, g->trophy[k].name);
+						else if ((*t)[k].progress > 0)
+							GamerzillaSetTrophyStat_internal(c, g->short_name, g->trophy[k].name, (*t)[k].progress);
+					}
 				}
 			}
 		}
+		return true;
 	}
+	return false;
 }
 
 bool GamerzillaConnect(const char *baseurl, const char *username, const char *password)
@@ -1109,8 +1116,17 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 					Gamerzilla g;
 					TrophyData *t = NULL;
 					gamerzillaClear(&g, false);
-					GamerzillaSync_internal(curl[1], dname, &g, &t);
+					bool success = GamerzillaSync_internal(curl[1], dname, &g, &t);
 					free(dname);
+					if (success == false)
+					{
+						mode = MODE_SERVEROFFLINE;
+						curl_easy_cleanup(curl[0]);
+						curl[0] = NULL;
+						curl_easy_cleanup(curl[1]);
+						curl[1] = NULL;
+						return false;
+					}
 				}
 			}
 		}
@@ -1130,45 +1146,55 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 		curl_easy_setopt(curl[1], CURLOPT_WRITEDATA, &internal_struct);
 		CURLcode res = curl_easy_perform(curl[1]);
 		if (res != CURLE_OK)
-			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-		json_error_t error;
-		json_t *root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
-		if (json_is_array(root))
 		{
-			int num = json_array_size(root);
-			for (int i = 0; i < num; i++)
+			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+			mode = MODE_SERVEROFFLINE;
+			curl_easy_cleanup(curl[0]);
+			curl[0] = NULL;
+			curl_easy_cleanup(curl[1]);
+			curl[1] = NULL;
+		}
+		else
+		{
+			json_error_t error;
+			json_t *root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
+			if (json_is_array(root))
 			{
-				json_t *item = json_array_get(root, i);
-				json_t *tmp = json_object_get(item, "shortname");
-				const char *game_name = json_string_value(tmp);
-				bool found = false;
-				for (int k = 0; k < game_num; k++)
+				int num = json_array_size(root);
+				for (int i = 0; i < num; i++)
 				{
-					if (strcmp(game_name, game_list[k]) == 0)
+					json_t *item = json_array_get(root, i);
+					json_t *tmp = json_object_get(item, "shortname");
+					const char *game_name = json_string_value(tmp);
+					bool found = false;
+					for (int k = 0; k < game_num; k++)
 					{
-						found = true;
-						break;
+						if (strcmp(game_name, game_list[k]) == 0)
+						{
+							found = true;
+							break;
+						}
+					}
+					if (!found)
+					{
+						GamerzillaLog(1, "Online Data: ", game_name);
+						GamerzillaGetGame(game_name);
+						// Get online data
+						content internal_struct = GamerzillaGetGameInfo_internal(curl[1], game_name);
+						json_error_t error;
+						json_t *game_info = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
+						Gamerzilla g;
+						TrophyData *t = NULL;
+						gamerzillaClear(&g, false);
+						bool update = GamerzillaMerge(curl[1], &g, &t, game_info);
+						json_decref(game_info);
+						gamefile_write(&g, t);
+						GamerzillaUpdateImages(curl[1], game_name, &g);
 					}
 				}
-				if (!found)
-				{
-					GamerzillaLog(1, "Online Data: ", game_name);
-					GamerzillaGetGame(game_name);
-					// Get online data
-					content internal_struct = GamerzillaGetGameInfo_internal(curl[1], game_name);
-					json_error_t error;
-					json_t *game_info = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
-					Gamerzilla g;
-					TrophyData *t = NULL;
-					gamerzillaClear(&g, false);
-					bool update = GamerzillaMerge(curl[1], &g, &t, game_info);
-					json_decref(game_info);
-					gamefile_write(&g, t);
-					GamerzillaUpdateImages(curl[1], game_name, &g);
-				}
 			}
+			json_decref(root);
 		}
-		json_decref(root);
 		free(url);
 		free(userpwd);
 		content_destroy(&internal_struct);
@@ -1262,9 +1288,7 @@ int GamerzillaSetGameFromFile(const char *filename, const char *datadir)
 		current.image = strprefix(datadir, current.image);
 		for (int i = 0; i < current.numTrophy; i++)
 		{
-			printf("%s\n", current.trophy[i].true_image);
 			current.trophy[i].true_image = strprefix(datadir, current.trophy[i].true_image);
-			printf("%s\n", current.trophy[i].true_image);
 			current.trophy[i].false_image = strprefix(datadir, current.trophy[i].false_image);
 		}
 		json_decref(root);
@@ -2024,9 +2048,15 @@ void GamerzillaQuit()
 #endif
 	}
 	if (curl[0])
+	{
 		curl_easy_cleanup(curl[0]);
+		curl[0] = NULL;
+	}
 	if (curl[1])
+	{
 		curl_easy_cleanup(curl[1]);
+		curl[1] = NULL;
+	}
 	if (client_socket)
 	{
 		for (int i = 0; i < num_client; i++)
