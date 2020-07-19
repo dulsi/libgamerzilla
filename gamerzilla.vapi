@@ -29,13 +29,25 @@ namespace Gamerzilla {
 	public static int connect(string url, string username, string password);
 
 	[CCode (cname="GamerzillaGetGame")]
-	public static int getGame(string short_name);
+	public static int get_game(string short_name);
 
 	[CCode (cname="GamerzillaFreeGame")]
-	public static int freeGame(int game_id);
+	public static int free_game(int game_id);
 
 	[CCode (cname="GamerzillaGetGameImage")]
-	public static int getGameImage(int game_id);
+	public static string get_game_image(int game_id);
+
+	[CCode (cname="GamerzillaGetTrophyNum")]
+	public static int get_trophy_num(int game_id);
+
+	[CCode (cname="GamerzillaGetTrophyByIndex")]
+	public static void get_trophy_by_index(int game_id, int indx, out unowned string name, out unowned string desc);
+
+	[CCode (cname="GamerzillaGetTrophyImage")]
+	public static string get_trophy_image(int game_id, string name, bool achieved);
+
+	[CCode (cname="GamerzillaGetTrophy")]
+	public static bool get_trophy(int game_id, string name, out bool achieved);
 
 	[CCode (cname="GamerzillaServerProcess")]
 	public static int process(Posix.timeval? timeout);

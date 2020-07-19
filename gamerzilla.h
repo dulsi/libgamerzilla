@@ -42,6 +42,8 @@ extern int GamerzillaGetGame(const char *short_name);
 extern void GamerzillaFreeGame(int game_id);
 extern void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_progress, char *true_image, char *false_image);
 extern char *GamerzillaGetGameImage(int game_id);
+extern int GamerzillaGetTrophyNum(int game_id);
+extern void GamerzillaGetTrophyByIndex(int game_id, int indx, char **name, char **desc);
 extern bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
 extern bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
 extern char *GamerzillaGetTrophyImage(int game_id, const char *name, bool achieved);

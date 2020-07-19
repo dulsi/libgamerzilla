@@ -1431,7 +1431,7 @@ bool GamerzillaCheckGameInfo(CURL *c, int game_id, Gamerzilla **info, TrophyData
 			if (game_info[game_id] == NULL)
 			{
 				game_info[game_id] = malloc(sizeof(Gamerzilla));
-				gamerzillaClear(&current, false);
+				gamerzillaClear(game_info[game_id], false);
 				// Read save file
 				json_t *root = gamefile_read(game_list[game_id]);
 				if (root)
@@ -1467,6 +1467,28 @@ char *GamerzillaGetGameImage(int game_id)
 	return GamerzillaGetGameImage_internal(game_name);
 }
 
+int GamerzillaGetTrophyNum(int game_id)
+{
+	Gamerzilla *info;
+	TrophyData *data;
+	if (GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id, &info, &data))
+	{
+		return info->numTrophy;
+	}
+	return 0;
+}
+
+void GamerzillaGetTrophyByIndex(int game_id, int indx, char **name, char **desc)
+{
+	Gamerzilla *info;
+	TrophyData *data;
+	if (GamerzillaCheckGameInfo((((mode == MODE_SERVERONLINE) || (mode == MODE_SERVEROFFLINE)) ? curl[1] : curl[0]), game_id, &info, &data))
+	{
+		*name = info->trophy[indx].name;
+		*desc = info->trophy[indx].desc;
+	}
+}
+
 bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 {
 	Gamerzilla *info;
@@ -1476,7 +1498,7 @@ bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved)
 	{
 		if (0 == strcmp(name, info->trophy[i].name))
 		{
-			*achieved = data->achieved;
+			*achieved = data[i].achieved;
 			return true;
 		}
 	}
