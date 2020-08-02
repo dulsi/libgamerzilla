@@ -23,14 +23,14 @@ PKG_SEARCH_MODULE(JANSSON REQUIRED jansson)
 INCLUDE_DIRECTORIES(${CURL_INCLUDE_DIRS} ${JANSSON_INCLUDE_DIRS})
 TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${CURL_LIBRARIES} ${JANSSON_LIBRARIES})
 if(WIN32)
-  TARGET_LINK_LIBRARIES(${PROJECT_NAME} wsock32 ws2_32)
+	TARGET_LINK_LIBRARIES(${PROJECT_NAME} wsock32 ws2_32)
 endif()
 
 set(INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}" CACHE PATH "Installation directory for libraries")
 set(INSTALL_INC_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gamerzilla.pc.cmakein
-		${CMAKE_CURRENT_BINARY_DIR}/gamerzilla.pc @ONLY)
+	${CMAKE_CURRENT_BINARY_DIR}/gamerzilla.pc @ONLY)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION "lib${LIB_SUFFIX}")
 
@@ -38,5 +38,7 @@ install(TARGETS ${PROJECT_NAME} DESTINATION "lib${LIB_SUFFIX}")
 file(GLOB HEADERS *.h)
 install(FILES ${HEADERS} DESTINATION include/gamerzilla)
 
-install(FILES gamerzilla.pc DESTINATION "lib${LIB_SUFFIX}/pkgconfig")
-install(FILES gamerzilla.vapi gamerzilla.deps DESTINATION share/vala/vapi)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/gamerzilla.pc DESTINATION "lib${LIB_SUFFIX}/pkgconfig")
+if(NOT WIN32)
+	install(FILES gamerzilla.vapi gamerzilla.deps DESTINATION share/vala/vapi)
+endif()

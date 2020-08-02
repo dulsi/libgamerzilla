@@ -20,7 +20,6 @@ library.
 %package devel
 Summary: Libraries and includes for Gamerzilla development
 Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: SDL2-devel%{?_isa}
 Requires: pkgconfig
 
 %description devel
@@ -32,10 +31,10 @@ developing applications that use gamerzilla.
 
 %build
 %cmake
-%make_build
+%cmake_build
 
 %install
-%make_install
+%cmake_install
 
 %files
 %doc README
