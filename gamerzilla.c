@@ -95,6 +95,7 @@ static char *save_dir = NULL;
 static int logLevel = 0;
 static FILE *logFile = NULL;
 static GamerzillaAccessGame accessCallback = NULL;
+static void *accessData = NULL;
 
 typedef struct {
 	size_t size;
@@ -1634,7 +1635,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			}
 			if ((g.short_name != NULL) && (accessCallback != NULL))
 			{
-				(*accessCallback)(g.short_name, g.name);
+				(*accessCallback)(g.short_name, g.name, accessData);
 			}
 			root = GamerzillaJson(&g, t);
 			char *response = json_dumps(root, 0);
@@ -1669,7 +1670,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 				gamefile_write(&g, t);
 				if (accessCallback != NULL)
 				{
-					(*accessCallback)(g.short_name, g.name);
+					(*accessCallback)(g.short_name, g.name, accessData);
 				}
 			}
 			if (mode == MODE_SERVERONLINE)
@@ -2056,9 +2057,10 @@ void GamerzillaServerProcess(struct timeval *timeout)
 	}
 }
 
-void GamerzillaServerListen(GamerzillaAccessGame callback)
+void GamerzillaServerListen(GamerzillaAccessGame callback, void *user_data)
 {
 	accessCallback = callback;
+	accessData = user_data;
 }
 
 void GamerzillaQuit()

@@ -22,6 +22,9 @@
 
 [CCode (cheader_filename = "gamerzilla.h")]
 namespace Gamerzilla {
+	[CCode (cname = "GamerzillaAccessGame", has_target = true)]
+	public delegate void AccessFunc(string short_name, string name);
+
 	[CCode (cname="GamerzillaStart")]
 	public static int start(bool server, string savedir);
 
@@ -51,6 +54,9 @@ namespace Gamerzilla {
 
 	[CCode (cname="GamerzillaServerProcess")]
 	public static int process(Posix.timeval? timeout);
+
+	[CCode (cname="GamerzillaServerListen")]
+	public static void listen(AccessFunc callback);
 
 	[CCode (cname="GamerzillaQuit")]
 	public static void quit();

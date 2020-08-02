@@ -11,7 +11,7 @@ char *trimend(char *s)
 	return s;
 }
 
-void PrintAccess(const char *short_name, const char *name)
+void PrintAccess(const char *short_name, const char *name, void *user_data)
 {
 	printf("Access: %s\n", name);
 }
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 	}
 	if (url != NULL)
 		GamerzillaConnect(url, name, pswd);
-	GamerzillaServerListen(&PrintAccess);
+	GamerzillaServerListen(&PrintAccess, NULL);
 	while (true)
 	{
 		GamerzillaServerProcess(NULL);
