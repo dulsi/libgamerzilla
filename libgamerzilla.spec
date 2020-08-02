@@ -1,6 +1,6 @@
 Summary: Gamerzilla Integration Library
 Name: libgamerzilla
-Version: 0.0.4
+Version: 0.0.5
 Release: 1%{?dist}
 License: LGPLv2+
 URL: https://github.com/dulsi/libgamerzilla
@@ -50,6 +50,9 @@ developing applications that use gamerzilla.
 %{_datadir}/vala/vapi/gamerzilla.deps
 
 %changelog
+* Sun Aug 02 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.5-1
+- Update to newest version
+
 * Tue Jul 21 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.4-1
 - Update to newest version
 
