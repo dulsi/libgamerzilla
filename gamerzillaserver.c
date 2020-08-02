@@ -11,6 +11,11 @@ char *trimend(char *s)
 	return s;
 }
 
+void PrintAccess(const char *short_name, const char *name)
+{
+	printf("Access: %s\n", name);
+}
+
 int main(int argc, char **argv)
 {
 	char *savedir = strdup("./server/");
@@ -47,6 +52,7 @@ int main(int argc, char **argv)
 	}
 	if (url != NULL)
 		GamerzillaConnect(url, name, pswd);
+	GamerzillaServerListen(&PrintAccess);
 	while (true)
 	{
 		GamerzillaServerProcess(NULL);

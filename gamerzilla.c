@@ -94,6 +94,7 @@ static CURL *curl[2] = { NULL, NULL };
 static char *save_dir = NULL;
 static int logLevel = 0;
 static FILE *logFile = NULL;
+static GamerzillaAccessGame accessCallback = NULL;
 
 typedef struct {
 	size_t size;
@@ -1631,6 +1632,10 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 					}
 				}
 			}
+			if ((g.short_name != NULL) && (accessCallback != NULL))
+			{
+				(*accessCallback)(g.short_name, g.name);
+			}
 			root = GamerzillaJson(&g, t);
 			char *response = json_dumps(root, 0);
 			hostsz = strlen(response);
@@ -1662,6 +1667,10 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 				GamerzillaMerge(curl[0], &g, &t, root);
 				json_decref(root);
 				gamefile_write(&g, t);
+				if (accessCallback != NULL)
+				{
+					(*accessCallback)(g.short_name, g.name);
+				}
 			}
 			if (mode == MODE_SERVERONLINE)
 			{
@@ -2045,6 +2054,11 @@ void GamerzillaServerProcess(struct timeval *timeout)
 			}
 		}
 	}
+}
+
+void GamerzillaServerListen(GamerzillaAccessGame callback)
+{
+	accessCallback = callback;
 }
 
 void GamerzillaQuit()
