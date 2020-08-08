@@ -3,7 +3,7 @@
 Summary: MinGW Windows port of Gamerzilla Integration Library
 Name: mingw-libgamerzilla
 Version: 0.0.5
-Release: 1%{?dist}
+Release: 2%{?dist}
 License: LGPLv2+
 URL: https://github.com/dulsi/libgamerzilla
 Source0: http://www.identicalsoftware.com/gamerzilla/libgamerzilla-%{version}.tgz
@@ -59,12 +59,16 @@ library.
 
 %install
 %mingw_make DESTDIR=%{buildroot} install
+mkdir %{buildroot}/%{mingw32_bindir}
+mkdir %{buildroot}/%{mingw64_bindir}
+mv %{buildroot}/%{mingw32_libdir}/libgamerzilla.dll %{buildroot}/%{mingw32_bindir}/libgamerzilla.dll
+mv %{buildroot}/%{mingw64_libdir}/libgamerzilla.dll %{buildroot}/%{mingw64_bindir}/libgamerzilla.dll
 
 # Win32
 %files -n mingw32-libgamerzilla
 %doc README
 %license LICENSE
-%{mingw32_libdir}/libgamerzilla.dll
+%{mingw32_bindir}/libgamerzilla.dll
 %{mingw32_libdir}/libgamerzilla.dll.a
 %{mingw32_libdir}/pkgconfig/gamerzilla.pc
 %{mingw32_includedir}/gamerzilla/
@@ -73,11 +77,14 @@ library.
 %files -n mingw64-libgamerzilla
 %doc README
 %license LICENSE
-%{mingw64_libdir}/libgamerzilla.dll
+%{mingw64_bindir}/libgamerzilla.dll
 %{mingw64_libdir}/libgamerzilla.dll.a
 %{mingw64_libdir}/pkgconfig/gamerzilla.pc
 %{mingw64_includedir}/gamerzilla/
 
 %changelog
+* Fri Aug 07 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.5-2
+- Move dlls to the right location
+
 * Sun Aug 02 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.5-1
 - Update to newest version
