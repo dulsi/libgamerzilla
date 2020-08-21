@@ -9,16 +9,15 @@
 <h1>Gamerzilla For Game Developers</h1>
 </center></p>
 
-<p><center><a href="index.html">Main</a> - For Game Developers - <a href="sourcecode.html">Source Code</a></center></p>
+<p><center><a href="index.html">Main</a> - For Game Developers - <a href="launchers.html">For Game Launchers</a> - <a href="sourcecode.html">Source Code</a></center></p>
 
 <hr>
 
 <p><h2>Why should I support it?</h2></p>
 
-<p>Right now Steam, GOG, PS4 and Xbox have an achievement system. Epic is
-looking to add that in the future. Will itch.io add an achievement system?
-How many builds do you want to make every time you make an update? Gmaerzilla
-is not tied to any store.</p>
+<p>Right now Steam, Epic, GOG, PS4 and Xbox have an achievement system. Will
+itch.io add an achievement system? How many builds do you want to make every
+time you make an update? Gmaerzilla is not tied to any store.</p>
 
 <p><h2>How does it upload results?</h2></p>
 
@@ -35,10 +34,11 @@ their achievements will be automatically synched.</p>
 
 <p><h2>What game launchers and servers support it?</h2></p>
 
-<p>No game launchers at the moment. For servers, only Hubzilla has a plugin to
-receive and display the acheivements. From a numbers perspective it makes no
-sense to support it but that is what led to the dominance of Steam. Game
-developers have the ability to take control back.</p>
+<p>No game launchers at the moment but GameHub support is waiting to be merged.
+For servers, only Hubzilla has a plugin to receive and display the
+acheivements. From a numbers perspective it makes no sense to support it but
+that is what led to the dominance of Steam. Game developers have the ability
+to take control back.</p>
 
 <p><h2>Why are there no hidden achievements?</h2></p>
 
@@ -54,20 +54,36 @@ it.</p>
 
 <p><h2>How do I add support in a C/C++ game?</h2></p>
 
+<p>Create a json file to contain all the trophies. Typically the file has the
+game extension.</p>
+
+<pre>{
+        "shortname": "mygame",
+        "name": "My Game",
+        "image": "gamerzilla/mygame.png",
+        "version": "1",
+        "trophy": [
+                {
+                        "trophy_name": "Win Game",
+                        "trophy_desc": "You completed the game.",
+                        "max_progress": "0",
+                        "trueimage": "gamerzilla/win1.png",
+                        "falseimage": "gamerzilla/win0.png"
+                },
+                {
+                        "trophy_name": "Slayer",
+                        "trophy_desc": "Kill 100 enemies.",
+                        "max_progress": "100",
+                        "trueimage": "gamerzilla/slayer1.png",
+                        "falseimage": "gamerzilla/slayer0.png"
+                }
+        ]
+}</pre>
+
+<p>In the C/C++ code:</p>
+
 <pre>GamerzillaStart(false, "save/");
-Gamerzilla g;
-GamerzillaTrophy trophy[1];
-GamerzillaInitGame(&g);
-g.short_name = strdup("test");
-g.name = strdup("Test");
-g.image = strdup("test.png");
-g.version = 1;
-g.numTrophy = 1;
-g.trophy = trophy;
-trophy[0].name = strdup("Win Game");
-trophy[0].desc = strdup("Win Game");
-trophy[0].max_progress = 0;
-int game_id = GamerzillaSetGame(&g);
+ing game_id = GamerzillaSetGameFromFile("./gamerzilla/mygame.game", "./");
 ...
 GamerzillaSetTophy(game_id, "Win Game");
 ...

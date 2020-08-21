@@ -1,0 +1,49 @@
+<html>
+<head>
+<title>Gamerzilla For Game Launchers</title>
+</head>
+
+<body bgcolor="#FFFFFF">
+
+<p><center>
+<h1>Gamerzilla For Launchers</h1>
+</center></p>
+
+<p><center><a href="index.html">Main</a> - <a href="developers.html">For Game Developers</a> - For Game Launchers - <a href="sourcecode.html">Source Code</a></center></p>
+
+<hr>
+
+<p><h2>Why should I support it?</h2></p>
+
+<p>Right now Steam, Epic, GOG, PS4 and Xbox have an achievement system. Will
+itch.io add an achievement system? Gamerzilla is not tied to any store. With
+enough support game developers will consider Gamerzilla achievements a needed
+feature. Additionally this is the only system that all open source games can
+use.</p>
+
+<p><h2>How do I add support in a C/C++ launcher?</h2></p>
+
+<p>Initiallization code is simply calling GamerzillaStart and
+GamerzillaConnect. GamerzillaConnect is only needed to upload results.
+Achievements can be displayed locally without connecting.</p>
+
+<pre>GamerzillaStart(true, "save/");
+GamerzillaConnect("http://hubzilla.instance/", "username", "password");</pre>
+
+<p>There will need to be a thread periodically calling GamerzillaServerProcess
+to get information from games and relay it to the Gamerzilla server (if
+connected). To avoid manually configuring the Gamerzilla short name with each
+game, it is good to install a callback for activity. The callback provides
+the Gamerzilla short name and the game name so that you can automatically match
+up the information.</p>
+
+<p>To get achievement information, you call the GamerzillaGetGame function to
+get the game ID. With the game ID, you can get the number of achievements, which
+have been achieved, and details of the achievements. GameHub support for
+Gamerzilla has been submitted to the project if you need an example
+implementation. Feel free to email
+<a href="mailto:dulsi@identicalsoftware.com">dulsi@identicalsoftware.com</a> if
+you have any problems.</p>
+
+</body>
+</html>
