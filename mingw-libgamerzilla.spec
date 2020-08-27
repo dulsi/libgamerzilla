@@ -3,19 +3,22 @@
 Summary: MinGW Windows port of Gamerzilla Integration Library
 Name: mingw-libgamerzilla
 Version: 0.0.5
-Release: 2%{?dist}
+Release: 3%{?dist}
 License: LGPLv2+
 URL: https://github.com/dulsi/libgamerzilla
 Source0: http://www.identicalsoftware.com/gamerzilla/libgamerzilla-%{version}.tgz
 BuildArch:      noarch
+BuildRequires: cmake
 BuildRequires: mingw32-filesystem >= 95
 BuildRequires: mingw32-gcc
+BuildRequires: mingw32-gcc-c++
 BuildRequires: mingw32-binutils
 BuildRequires: mingw32-jansson
 BuildRequires: mingw32-curl
 
 BuildRequires: mingw64-filesystem >= 95
 BuildRequires: mingw64-gcc
+BuildRequires: mingw64-gcc-c++
 BuildRequires: mingw64-binutils
 BuildRequires: mingw64-jansson
 BuildRequires: mingw64-curl
@@ -29,7 +32,6 @@ library.
 # Win32
 %package -n mingw32-libgamerzilla
 Summary:        MinGW Windows port of Gamerzilla Integration Library
-Requires:       pkgconfig
 
 %description -n mingw32-libgamerzilla
 Gamerzilla is trophy/achievement system for games. It integrates with a
@@ -40,7 +42,6 @@ library.
 # Win64
 %package -n mingw64-libgamerzilla
 Summary:        MinGW Windows port of Gamerzilla Integration Library
-Requires:       pkgconfig
 
 %description -n mingw64-libgamerzilla
 Gamerzilla is trophy/achievement system for games. It integrates with a
@@ -83,6 +84,9 @@ mv %{buildroot}/%{mingw64_libdir}/libgamerzilla.dll %{buildroot}/%{mingw64_bindi
 %{mingw64_includedir}/gamerzilla/
 
 %changelog
+* Web Aug 26 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.5-3
+- Add more build requirements
+
 * Fri Aug 07 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.5-2
 - Move dlls to the right location
 
