@@ -38,11 +38,12 @@ typedef void (*GamerzillaAccessGame)(const char *short_name, const char *name, v
 extern bool GamerzillaStart(bool server, const char *savedir);
 extern bool GamerzillaConnect(const char *url, const char *username, const char *password);
 extern void GamerzillaInitGame(Gamerzilla *g);
+extern void GamerzillaClearGame(Gamerzilla *g);
 extern int GamerzillaSetGame(Gamerzilla *g);
 extern int GamerzillaSetGameFromFile(const char *filename, const char *datadir);
 extern int GamerzillaGetGame(const char *short_name);
 extern void GamerzillaFreeGame(int game_id);
-extern void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_progress, char *true_image, char *false_image);
+extern void GamerzillaGameAddTrophy(Gamerzilla *g, const char *name, const char *desc, int max_progress, const char *true_image, const char *false_image);
 extern char *GamerzillaGetGameImage(int game_id);
 extern int GamerzillaGetTrophyNum(int game_id);
 extern void GamerzillaGetTrophyByIndex(int game_id, int indx, char **name, char **desc);

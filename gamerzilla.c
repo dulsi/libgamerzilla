@@ -1209,6 +1209,11 @@ void GamerzillaInitGame(Gamerzilla *g)
 	gamerzillaClear(g, false);
 }
 
+void GamerzillaClearGame(Gamerzilla *g)
+{
+	gamerzillaClear(g, true);
+}
+
 int GamerzillaSetGame(Gamerzilla *g)
 {
 	current.short_name = strdup(g->short_name);
@@ -1394,7 +1399,7 @@ void GamerzillaFreeGame(int game_id)
 	}
 }
 
-void GamerzillaGameAddTrophy(Gamerzilla *g, char *name, char *desc, int max_progress, char *true_image, char *false_image)
+void GamerzillaGameAddTrophy(Gamerzilla *g, const char *name, const char *desc, int max_progress, const char *true_image, const char *false_image)
 {
 	if (g->szTrophy == 0)
 	{
