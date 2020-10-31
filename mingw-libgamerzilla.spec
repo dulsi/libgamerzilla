@@ -2,9 +2,9 @@
 
 Summary: MinGW Windows port of Gamerzilla Integration Library
 Name: mingw-libgamerzilla
-Version: 0.0.6
+Version: 0.0.7
 Release: 1%{?dist}
-License: LGPLv2+
+License: zlib
 URL: https://github.com/dulsi/libgamerzilla
 Source0: http://www.identicalsoftware.com/gamerzilla/libgamerzilla-%{version}.tgz
 BuildArch:      noarch
