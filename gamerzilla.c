@@ -97,6 +97,37 @@ static FILE *logFile = NULL;
 static GamerzillaAccessGame accessCallback = NULL;
 static void *accessData = NULL;
 
+size_t fileSize(const char *filename)
+{
+	struct stat statbuf;
+	if (0 == stat(filename, &statbuf))
+	{
+		return statbuf.st_size;
+	}
+	return 0;
+}
+
+void *fileOpen(const char *filename)
+{
+	FILE *f = fopen(filename, "rb");
+	return f;
+}
+
+size_t fileRead(void *fd, void *buf, size_t count)
+{
+	return fread(buf, 1, count, (FILE *)fd);
+}
+
+void fileClose(void *fd)
+{
+	fclose((FILE *)fd);
+}
+
+static GamerzillaSize game_size = &fileSize;
+static GamerzillaOpen game_open = &fileOpen;
+static GamerzillaRead game_read = &fileRead;
+static GamerzillaClose game_close = &fileClose;
+
 typedef struct {
 	size_t size;
 	size_t len;
@@ -188,6 +219,11 @@ static size_t curlWriteFile(void *ptr, size_t size, size_t nmemb, void *fd)
 {
 	size_t written = fwrite(ptr, 1, size * nmemb, ((FILE *)fd));
 	return written;
+}
+
+size_t jsonRead(void *buffer, size_t buflen, void *data)
+{
+	return (*game_read)(data, buffer, buflen);
 }
 
 static void gamerzillaClear(Gamerzilla *g, bool memFree)
@@ -970,34 +1006,37 @@ static void GamerzillaSetGameInfo_internal(CURL *c, Gamerzilla *g)
 		uint8_t cmd = CMD_SETGAMEIMAGE;
 		uint32_t hostsz = strlen(g->short_name);
 		uint32_t sz = htonl(hostsz);
-		struct stat statbuf[2];
+		size_t st_size[2];
+		st_size[0] = (*game_size)(g->image);
 		char data[1024];
-		if (0 == stat(g->image, &statbuf[0]))
+		if (0 != st_size[0])
 		{
 			writesocket(server_socket, &cmd, sizeof(cmd));
 			writesocket(server_socket, &sz, sizeof(sz));
 			writesocket(server_socket, g->short_name, hostsz);
-			hostsz = statbuf[0].st_size;
+			hostsz = st_size[0];
 			sz = htonl(hostsz);
 			writesocket(server_socket, &sz, sizeof(sz));
-			FILE *f = fopen(g->image, "rb");
+			void *f = (*game_open)(g->image);
 			while (hostsz > 0)
 			{
-				size_t ct = fread(data, 1, 1024, f);
+				size_t ct = (*game_read)(f, data, 1024);
 				if (ct > 0)
 				{
 					hostsz -= ct;
 					writesocket(server_socket, data, ct);
 				}
 			}
-			fclose(f);
+			(*game_close)(f);
 		}
 		for (int i = 0; i < g->numTrophy; i++)
 		{
 			cmd = CMD_SETTROPHYIMAGE;
 			hostsz = strlen(g->short_name);
 			sz = htonl(hostsz);
-			if ((0 == stat(g->trophy[i].true_image, &statbuf[0])) && (0 == stat(g->trophy[i].false_image, &statbuf[1])))
+			st_size[0] = (*game_size)(g->trophy[i].true_image);
+			st_size[1] = (*game_size)(g->trophy[i].false_image);
+			if ((0 != st_size[0]) && (0 != st_size[1]))
 			{
 				writesocket(server_socket, &cmd, sizeof(cmd));
 				writesocket(server_socket, &sz, sizeof(sz));
@@ -1006,34 +1045,34 @@ static void GamerzillaSetGameInfo_internal(CURL *c, Gamerzilla *g)
 				sz = htonl(hostsz);
 				writesocket(server_socket, &sz, sizeof(sz));
 				writesocket(server_socket, g->trophy[i].name, hostsz);
-				hostsz = statbuf[0].st_size;
+				hostsz = st_size[0];
 				sz = htonl(hostsz);
 				writesocket(server_socket, &sz, sizeof(sz));
-				FILE *f = fopen(g->trophy[i].true_image, "rb");
+				void *f = (*game_open)(g->trophy[i].true_image);
 				while (hostsz > 0)
 				{
-					size_t ct = fread(data, 1, 1024, f);
+					size_t ct = (*game_read)(f, data, 1024);
 					if (ct > 0)
 					{
 						hostsz -= ct;
 						writesocket(server_socket, data, ct);
 					}
 				}
-				fclose(f);
-				hostsz = statbuf[1].st_size;
+				(*game_close)(f);
+				hostsz = st_size[1];
 				sz = htonl(hostsz);
 				writesocket(server_socket, &sz, sizeof(sz));
-				f = fopen(g->trophy[i].false_image, "rb");
+				f = (*game_open)(g->trophy[i].false_image);
 				while (hostsz > 0)
 				{
-					size_t ct = fread(data, 1, 1024, f);
+					size_t ct = (*game_read)(f, data, 1024);
 					if (ct > 0)
 					{
 						hostsz -= ct;
 						writesocket(server_socket, data, ct);
 					}
 				}
-				fclose(f);
+				(*game_close)(f);
 			}
 		}
 	}
@@ -1288,7 +1327,10 @@ int GamerzillaSetGameFromFile(const char *filename, const char *datadir)
 {
 	GamerzillaInitGame(&current);
 	json_error_t error;
-	json_t *root = json_load_file(filename, 0, &error);
+	json_t *root = NULL;
+	void *fd = (*game_open)(filename);
+	root = json_load_callback(&jsonRead, fd, 0, &error);
+	(*game_close)(fd);
 	if (root)
 	{
 		GamerzillaMerge(curl[0], &current, &currentData, root);
@@ -2108,6 +2150,14 @@ void GamerzillaQuit()
 		}
 		free(client_socket);
 	}
+}
+
+void GamerzillaSetRead(GamerzillaSize gameSize, GamerzillaOpen gameOpen, GamerzillaRead gameRead, GamerzillaClose gameClose)
+{
+	game_size = gameSize;
+	game_open = gameOpen;
+	game_read = gameRead;
+	game_close = gameClose;
 }
 
 void GamerzillaSetLog(int level, FILE *f)

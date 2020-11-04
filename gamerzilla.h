@@ -35,6 +35,11 @@ typedef struct
 
 typedef void (*GamerzillaAccessGame)(const char *short_name, const char *name, void *user_data);
 
+typedef size_t (*GamerzillaSize)(const char *filename);
+typedef void *(*GamerzillaOpen)(const char *filename);
+typedef size_t (*GamerzillaRead)(void *fd, void *buf, size_t count);
+typedef void (*GamerzillaClose)(void *fd);
+
 extern bool GamerzillaStart(bool server, const char *savedir);
 extern bool GamerzillaConnect(const char *url, const char *username, const char *password);
 extern void GamerzillaInitGame(Gamerzilla *g);
@@ -55,6 +60,8 @@ extern bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 extern void GamerzillaServerProcess(struct timeval *timeout);
 extern void GamerzillaServerListen(GamerzillaAccessGame callback, void *user_data);
 extern void GamerzillaQuit();
+
+extern void GamerzillaSetRead(GamerzillaSize gameSize, GamerzillaOpen gameOpen, GamerzillaRead gameRead, GamerzillaClose gameClose);
 
 extern void GamerzillaSetLog(int level, FILE *f);
 
