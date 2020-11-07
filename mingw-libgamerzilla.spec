@@ -84,6 +84,9 @@ mv %{buildroot}/%{mingw64_libdir}/libgamerzilla.dll %{buildroot}/%{mingw64_bindi
 %{mingw64_includedir}/gamerzilla/
 
 %changelog
+* Sat Nov 07 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.7-1
+- Update to newest version
+
 * Sun Sep 13 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.6-1
 - Update to newest version
 
