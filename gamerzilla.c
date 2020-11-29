@@ -324,9 +324,15 @@ bool GamerzillaStart(bool server, const char *savedir)
 		int len = sprintf(&addr.sun_path[1], "Gamerzilla%d", geteuid());
 		server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (server_socket == INVALID_SOCKET)
+		{
+			fprintf(stderr, "Invalid socket\n");
 			return false;
+		}
 		if (bind(server_socket, (struct sockaddr *) &addr, sizeof(sa_family_t) + len + 1) == -1)
+		{
+			fprintf(stderr, "Bind failed\n");
 			return false;
+		}
 #endif
 		if (listen(server_socket, 5) == -1)
 			return false;
