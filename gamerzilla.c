@@ -680,7 +680,7 @@ static json_t *gamefile_read(const char *shortname)
 	return root;
 }
 
-static json_t *GamerzillaJson(Gamerzilla *g, TrophyData *t)
+static json_t *GamerzillaJson(Gamerzilla *g, TrophyData *t, bool incomplete)
 {
 	char tmp[512];
 	json_t *root = json_object();
@@ -689,6 +689,10 @@ static json_t *GamerzillaJson(Gamerzilla *g, TrophyData *t)
 	json_object_set_new(root, "image", json_string(g->image));
 	sprintf(tmp, "%d", g->version);
 	json_object_set_new(root, "version", json_string(tmp));
+	if (incomplete)
+	{
+		json_object_set_new(root, "incomplete", json_string("1"));
+	}
 	json_t *trophy = json_array();
 	json_object_set_new(root, "trophy", trophy);
 	for (int i = 0; i < g->numTrophy; i++)
@@ -713,7 +717,7 @@ static void gamefile_write(Gamerzilla *g, TrophyData *t)
 	strcpy(filename, save_dir);
 	strcat(filename, g->short_name);
 	strcat(filename, ".game");
-	json_t *root = GamerzillaJson(g, t);
+	json_t *root = GamerzillaJson(g, t, false);
 	json_dump_file(root, filename, 0);
 	json_decref(root);
 }
@@ -1305,6 +1309,11 @@ int GamerzillaSetGame(Gamerzilla *g)
 			{
 				needSend = true;
 			}
+			json_t *incplt = json_object_get(root, "incomplete");
+			if ((incplt) && (json_is_string(incplt)) && (1 == atol(json_string_value(incplt))))
+			{
+				needSend = true;
+			}
 			json_decref(root);
 			if (update)
 			{
@@ -1374,6 +1383,11 @@ int GamerzillaSetGameFromFile(const char *filename, const char *datadir)
 					needSend = true;
 			}
 			else
+			{
+				needSend = true;
+			}
+			json_t *incplt = json_object_get(root, "incomplete");
+			if ((incplt) && (json_is_string(incplt)) && (1 == atol(json_string_value(incplt))))
 			{
 				needSend = true;
 			}
@@ -1631,6 +1645,73 @@ bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress)
 	return true;
 }
 
+static bool GamerzillaCheckImages(Gamerzilla *g)
+{
+	char *shortname = g->short_name;
+	char *filename = (char *)malloc(strlen(save_dir) + strlen(shortname) * 2 + 20);
+	createImagePath(shortname);
+	strcpy(filename, save_dir);
+	strcat(filename, "image/");
+	strcat(filename, shortname);
+	strcat(filename, "/");
+	strcat(filename, shortname);
+	strcat(filename, ".png");
+	FILE *f = fopen(filename, "rb");
+	free(filename);
+	if (f)
+	{
+		fclose(f);
+	}
+	else
+		return false;
+	for (int i = 0; i < g->numTrophy; i++)
+	{
+		char *trophy_name = g->trophy[i].name;
+		filename = (char *)malloc(strlen(save_dir) + strlen(shortname) * 2 + strlen(trophy_name) + 20);
+		strcpy(filename, save_dir);
+		strcat(filename, "image/");
+		strcat(filename, shortname);
+		strcat(filename, "/");
+		int end = strlen(filename);
+		for (int i = 0; trophy_name[i]; i++)
+		{
+			if (isalnum(trophy_name[i]))
+			{
+				filename[end] = trophy_name[i];
+			}
+			else
+			{
+				filename[end] = '_';
+			}
+			end++;
+		}
+		filename[end] = 0;
+		strcat(filename, "1.png");
+		f = fopen(filename, "rb");
+		if (f)
+		{
+			fclose(f);
+		}
+		else
+		{
+			free(filename);
+			return false;
+		}
+		filename[end] = '0';
+		f = fopen(filename, "rb");
+		free(filename);
+		if (f)
+		{
+			fclose(f);
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 static bool GamerzillaServerProcessClient(SOCKET fd)
 {
 	uint8_t cmd;
@@ -1664,10 +1745,12 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			gamerzillaClear(&g, false);
 			// Read save file
 			json_t *root = gamefile_read(name);
+			bool complete = true;
 			if (root)
 			{
 				GamerzillaMerge(curl[0], &g, &t, root);
 				json_decref(root);
+				complete = GamerzillaCheckImages(&g);
 			}
 			if (mode != MODE_SERVEROFFLINE)
 			{
@@ -1690,7 +1773,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			{
 				(*accessCallback)(g.short_name, g.name, accessData);
 			}
-			root = GamerzillaJson(&g, t);
+			root = GamerzillaJson(&g, t, !complete);
 			char *response = json_dumps(root, 0);
 			hostsz = strlen(response);
 			sz = htonl(hostsz);
