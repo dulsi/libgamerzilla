@@ -1,6 +1,6 @@
 Summary: Gamerzilla Integration Library
 Name: libgamerzilla
-Version: 0.0.7
+Version: 0.0.8
 Release: 1%{?dist}
 License: zlib
 URL: https://github.com/dulsi/libgamerzilla
@@ -26,6 +26,13 @@ Requires: pkgconfig
 This package contains libraries and header files for
 developing applications that use gamerzilla.
 
+%package server
+Summary: Simple Gamerzilla server to relay information to Hubzilla
+
+%description server
+The gamerzillaserver listens for trophies awarded by games. It logs into
+the user's Hubzilla server and passes on the awards.
+
 %prep
 %setup -q
 
@@ -49,7 +56,14 @@ developing applications that use gamerzilla.
 %{_datadir}/vala/vapi/gamerzilla.vapi
 %{_datadir}/vala/vapi/gamerzilla.deps
 
+%files server
+%{_bindir}/gamerzillaserver
+
 %changelog
+* Mon Nov 30 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.8-1
+- Update to newest version
+- Add server package
+
 * Sat Nov 07 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.7-1
 - Update to newest version
 

@@ -41,4 +41,6 @@ install(FILES ${HEADERS} DESTINATION include/gamerzilla)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/gamerzilla.pc DESTINATION "lib${LIB_SUFFIX}/pkgconfig")
 if(NOT WIN32)
 	install(FILES gamerzilla.vapi gamerzilla.deps DESTINATION share/vala/vapi)
+
+	install(TARGETS gamerzillaserver DESTINATION "bin")
 endif()
