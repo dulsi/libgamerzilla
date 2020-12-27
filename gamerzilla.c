@@ -3,13 +3,61 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <unistd.h>
 #include <jansson.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <ctype.h>
+
+#ifndef _MSC_VER
+
+#include <unistd.h>
 #include <dirent.h>
+
+#else
+
+#include <windows.h>
+
+#define DIR void
+
+struct dirent
+{
+	char d_name[256];
+};
+
+static HANDLE dirEntry = INVALID_HANDLE_VALUE;
+static WIN32_FIND_DATA fileData;
+static struct dirent fileData2;
+
+static DIR *opendir(const char *name)
+{
+	if (dirEntry != INVALID_HANDLE_VALUE)
+		FindClose(dirEntry);
+	char *path = malloc(strlen(name) + 2);
+	strcpy(path, name);
+	strcat(path, ".");
+	memset(&fileData, 0, sizeof fileData);
+	dirEntry = FindFirstFile(path, &fileData);
+	if (dirEntry == INVALID_HANDLE_VALUE)
+		return 0;
+	else
+		return &dirEntry;
+}
+
+static struct dirent *readdir(DIR *dirp)
+{
+	strcpy(fileData2.d_name, fileData.cFileName);
+	if (fileData2.d_name[0] == 0)
+		return 0;
+	else
+	{
+		memset(&fileData, 0, sizeof fileData);
+		FindNextFile(dirEntry, &fileData);
+		return &fileData2;
+	}
+}
+
+#endif
 
 #ifdef _WIN32
 #define GAMERZILLA_USETCP

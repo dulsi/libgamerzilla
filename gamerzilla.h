@@ -13,6 +13,10 @@
 extern "C" {
 #endif
 
+#ifdef _MSC_VER
+#define ssize_t int
+#endif
+
 typedef struct
 {
 	char *name;
