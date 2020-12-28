@@ -1,3 +1,5 @@
+#define GAMERZILLA_BUILD
+
 #include <gamerzilla.h>
 #include <curl/curl.h>
 #include <stdlib.h>

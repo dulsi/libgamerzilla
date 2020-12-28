@@ -15,7 +15,16 @@ extern "C" {
 
 #ifdef _MSC_VER
 #define ssize_t int
+
+#ifdef GAMERZILLA_BUILD
+#	define EXPORT _declspec(dllexport)
+#else
+#	define EXPORT _declspec(dllimport)
 #endif
+#else
+#define EXPORT
+#endif
+
 
 typedef struct
 {
@@ -44,30 +53,30 @@ typedef void *(*GamerzillaOpen)(const char *filename);
 typedef size_t (*GamerzillaRead)(void *fd, void *buf, size_t count);
 typedef void (*GamerzillaClose)(void *fd);
 
-extern bool GamerzillaStart(bool server, const char *savedir);
-extern bool GamerzillaConnect(const char *url, const char *username, const char *password);
-extern void GamerzillaInitGame(Gamerzilla *g);
-extern void GamerzillaClearGame(Gamerzilla *g);
-extern int GamerzillaSetGame(Gamerzilla *g);
-extern int GamerzillaSetGameFromFile(const char *filename, const char *datadir);
-extern int GamerzillaGetGame(const char *short_name);
-extern void GamerzillaFreeGame(int game_id);
-extern void GamerzillaGameAddTrophy(Gamerzilla *g, const char *name, const char *desc, int max_progress, const char *true_image, const char *false_image);
-extern char *GamerzillaGetGameImage(int game_id);
-extern int GamerzillaGetTrophyNum(int game_id);
-extern void GamerzillaGetTrophyByIndex(int game_id, int indx, char **name, char **desc);
-extern bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
-extern bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
-extern char *GamerzillaGetTrophyImage(int game_id, const char *name, bool achieved);
-extern bool GamerzillaSetTrophy(int game_id, const char *name);
-extern bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress);
-extern void GamerzillaServerProcess(struct timeval *timeout);
-extern void GamerzillaServerListen(GamerzillaAccessGame callback, void *user_data);
-extern void GamerzillaQuit();
+EXPORT extern bool GamerzillaStart(bool server, const char *savedir);
+EXPORT extern bool GamerzillaConnect(const char *url, const char *username, const char *password);
+EXPORT extern void GamerzillaInitGame(Gamerzilla *g);
+EXPORT extern void GamerzillaClearGame(Gamerzilla *g);
+EXPORT extern int GamerzillaSetGame(Gamerzilla *g);
+EXPORT extern int GamerzillaSetGameFromFile(const char *filename, const char *datadir);
+EXPORT extern int GamerzillaGetGame(const char *short_name);
+EXPORT extern void GamerzillaFreeGame(int game_id);
+EXPORT extern void GamerzillaGameAddTrophy(Gamerzilla *g, const char *name, const char *desc, int max_progress, const char *true_image, const char *false_image);
+EXPORT extern char *GamerzillaGetGameImage(int game_id);
+EXPORT extern int GamerzillaGetTrophyNum(int game_id);
+EXPORT extern void GamerzillaGetTrophyByIndex(int game_id, int indx, char **name, char **desc);
+EXPORT extern bool GamerzillaGetTrophy(int game_id, const char *name, bool *achieved);
+EXPORT extern bool GamerzillaGetTrophyStat(int game_id, const char *name, int *progress);
+EXPORT extern char *GamerzillaGetTrophyImage(int game_id, const char *name, bool achieved);
+EXPORT extern bool GamerzillaSetTrophy(int game_id, const char *name);
+EXPORT extern bool GamerzillaSetTrophyStat(int game_id, const char *name, int progress);
+EXPORT extern void GamerzillaServerProcess(struct timeval *timeout);
+EXPORT extern void GamerzillaServerListen(GamerzillaAccessGame callback, void *user_data);
+EXPORT extern void GamerzillaQuit();
 
-extern void GamerzillaSetRead(GamerzillaSize gameSize, GamerzillaOpen gameOpen, GamerzillaRead gameRead, GamerzillaClose gameClose);
+EXPORT extern void GamerzillaSetRead(GamerzillaSize gameSize, GamerzillaOpen gameOpen, GamerzillaRead gameRead, GamerzillaClose gameClose);
 
-extern void GamerzillaSetLog(int level, FILE *f);
+EXPORT extern void GamerzillaSetLog(int level, FILE *f);
 
 #ifdef __cplusplus
 }
