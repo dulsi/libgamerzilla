@@ -1,0 +1,105 @@
+<html>
+<head>
+<title>Gamerzilla For Godot</title>
+<link rel="stylesheet" type="text/css" href="common.css" media="all" />
+</head>
+
+<body bgcolor="#FFFFFF">
+
+<p><center>
+<h1>Gamerzilla For Godot</h1>
+</center></p>
+
+<p><center><a href="index.html">Main</a> - <a href="developers.html">For Game Developers</a> - For Godot - <a href="launchers.html">For Game Launchers</a> - <a href="sourcecode.html">Source Code</a></center></p>
+
+<hr>
+
+<p>For general game developer questions like "Why should I support it?" see
+<a href="developers.html">For Game Developers</a> section</p>
+
+<p><h2>Where can I get the gdnative binaries?</h2></p>
+
+<p>Binaries for 64-bit Windows and 64-bit Linux are available on the
+<a href="index.html">Main</a> page. The Windows binaries include
+gamerzilla, curl, jansson and zlib1 libraries. Linux distributions typically
+install curl and jansson by default so only gamerzilla library is included.</p>
+
+<p><h2>How do I use it?</h2></p>
+
+<p>In your Godot project, create a directory gdnative. Extract the Windows
+and Linux gdnative binaries into this directory.</p>
+
+<p>Load the project in godot. Right click in the resource dialog and create
+a new resource. Search for GDNativeLibrary. In the bottom contextual
+panel at the bottom you will see where you can specify the library to
+load for each platform. For 64-bit Windows select libgdgamerzilla.dll for the
+dynamic library and gamerzilla.dll, jansson.dll, libcurl.dll and zlib1.dll as
+dependencies. For 64-bit Linux select libgdgamerzilla.so for the dynamic
+library and libgamerzilla.so.0 as the dependency.</p>
+
+<p>After that is setup, create another new resource. Search for
+NativeScript. Set the library to the GDNativeLibrary you just added. For
+class name enter Gamerzilla.</p>
+
+<p>Before you can award achievements to players, you need to define the
+achievements. Typically you specify the achievements in a json file.</p>
+
+<pre>{
+	"shortname": "test",
+	"name": "Test Game",
+	"image": "res://gamerzilla/test.png.res",
+	"version": "1",
+	"trophy": [
+		{
+			"trophy_name": "Winner", 
+			"trophy_desc": "Win the game", 
+			"max_progress": "0",
+			"trueimage": "res://gamerzilla/true.png.res",
+			"falseimage": "res://gamerzilla/false.png.res"
+		},
+		{
+			"trophy_name": "Dragon Slayer",
+			"trophy_desc": "Kill five dragons",
+			"max_progress": "5", 
+			"trueimage": "res://gamerzilla/true.png.res",
+			"falseimage": "res://gamerzilla/false.png.res"
+		}
+	]
+}</pre>
+
+<p>This example places all gamerzilla files in a subdirectory. You don't
+need to do this. The file itself would be call test.game.tres. Godot
+automatically converts png files to a different format for loading. The
+files have been renamed to add .res as the file extension to prevent
+this conversion.</p>
+
+<p>In your project you need to load the NativeScript resource. Since not
+all platforms support Gamerzilla, it is best to check if the script
+loaded properly before calling it.</p>
+
+<pre>var gzilla = preload("res://gdgamerzillascript.gdns").new()
+if (gzilla):
+	print(gzilla.start(false, OS.get_user_data_dir()))
+	gzilla.setGameFromFile("res://gamerzilla/test.game.tres", "")</pre>
+
+<p>For giving an achievement you call the SetTrophy method.</p>
+
+<pre>if (gzilla):
+	gzilla.setTrophy("Winner")</pre>
+
+<p>If you want to set progress on an achievement there are functions to get
+and set the current progress.</p>
+
+<pre>if (gzilla):
+	var count = gzilla.getTrophyStat("Dragon Slayer")
+	gzilla.setTrophyStat("Dragon Slayer", count + 1)</pre>
+
+<p>If the player has achieved the maximum progress, the achievement is
+automatically awarded.</p>
+
+<div class="footer"><hr>
+
+&#169; 2021, Identical Software.  License: CC-BY-SA 4.0
+</div>
+</body>
+</html>
