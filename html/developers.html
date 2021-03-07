@@ -86,11 +86,11 @@ game extension.</p>
 <pre>GamerzillaStart(false, "save/");
 ing game_id = GamerzillaSetGameFromFile("./gamerzilla/mygame.game", "./");
 ...
-GamerzillaSetTophy(game_id, "Win Game");
+GamerzillaSetTrophy(game_id, "Win Game");
 ...
 int progress;
 GamerzillaGetTrophyStat(game_id, "Slayer", &progress)
-GamerzillaSetTophyStat(game_id, "Slayer", progress + 2);
+GamerzillaSetTrophyStat(game_id, "Slayer", progress + 2);
 ...
 GamerzillaQuit();</pre>
 
