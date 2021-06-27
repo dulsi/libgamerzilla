@@ -1370,6 +1370,10 @@ int GamerzillaSetGame(Gamerzilla *g)
 				gamefile_write(&current, currentData);
 			}
 		}
+		else
+		{
+			needSend = true;
+		}
 		if (needSend)
 		{
 			GamerzillaSetGameInfo_internal(curl[0], &current);
