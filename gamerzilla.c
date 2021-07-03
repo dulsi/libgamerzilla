@@ -429,7 +429,7 @@ bool GamerzillaStart(bool server, const char *savedir)
 	return false;
 }
 
-static content GamerzillaGetGameInfo_internal(CURL *c, const char *name)
+static content GamerzillaGetGameInfo_internal(CURL *c, const char *name, bool *success)
 {
 	content internal_struct;
 	content_init(&internal_struct);
@@ -457,7 +457,13 @@ static content GamerzillaGetGameInfo_internal(CURL *c, const char *name)
 		curl_easy_setopt(c, CURLOPT_WRITEDATA, &internal_struct);
 		CURLcode res = curl_easy_perform(c);
 		if (res != CURLE_OK)
+		{
+			if (success)
+				*success = false;
 			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		}
+		else if (success)
+			*success = true;
 		free(url);
 		free(userpwd);
 		free(postdata);
@@ -1151,8 +1157,9 @@ static bool GamerzillaSync_internal(CURL *c, const char *short_name, Gamerzilla 
 		if (mode != MODE_OFFLINE)
 		{
 			// Get online data
-			content internal_struct = GamerzillaGetGameInfo_internal(c, short_name);
-			if (internal_struct.len == 0)
+			bool success = false;
+			content internal_struct = GamerzillaGetGameInfo_internal(c, short_name, &success);
+			if (!success)
 				return false;
 			else
 			{
@@ -1281,7 +1288,7 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 						GamerzillaLog(1, "Online Data: ", game_name);
 						GamerzillaGetGame(game_name);
 						// Get online data
-						content internal_struct = GamerzillaGetGameInfo_internal(curl[1], game_name);
+						content internal_struct = GamerzillaGetGameInfo_internal(curl[1], game_name, NULL);
 						json_error_t error;
 						json_t *game_info = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
 						Gamerzilla g;
@@ -1340,7 +1347,7 @@ int GamerzillaSetGame(Gamerzilla *g)
 	if (mode != MODE_OFFLINE)
 	{
 		// Get online data
-		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name);
+		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name, NULL);
 		json_error_t error;
 		root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
 		bool needSend = false;
@@ -1421,7 +1428,7 @@ int GamerzillaSetGameFromFile(const char *filename, const char *datadir)
 	if (mode != MODE_OFFLINE)
 	{
 		// Get online data
-		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name);
+		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name, NULL);
 		json_error_t error;
 		root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
 		bool needSend = false;
@@ -1809,7 +1816,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			if (mode != MODE_SERVEROFFLINE)
 			{
 				// Get online data
-				content internal_struct = GamerzillaGetGameInfo_internal(curl[0], name);
+				content internal_struct = GamerzillaGetGameInfo_internal(curl[0], name, NULL);
 				json_error_t error;
 				root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
 				if (root)
