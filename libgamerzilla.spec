@@ -1,6 +1,6 @@
 Summary: Gamerzilla Integration Library
 Name: libgamerzilla
-Version: 0.0.9
+Version: 0.1.0
 Release: 1%{?dist}
 License: zlib
 URL: https://github.com/dulsi/libgamerzilla
@@ -60,6 +60,9 @@ the user's Hubzilla server and passes on the awards.
 %{_bindir}/gamerzillaserver
 
 %changelog
+* Sat Jul 03 2021 Dennis Payne <dulsi@identicalsoftware.com> - 0.1.0-1
+- Update to newest version
+
 * Tue Dec 29 2020 Dennis Payne <dulsi@identicalsoftware.com> - 0.0.9-1
 - Update to newest version
 
