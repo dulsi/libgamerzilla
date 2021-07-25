@@ -1164,8 +1164,14 @@ static bool GamerzillaSync_internal(CURL *c, const char *short_name, Gamerzilla 
 			else
 			{
 				json_error_t error;
+				int jsonVersion = 0;
 				root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
 				bool update = GamerzillaMerge(c, g, t, root);
+				json_t *ver = json_object_get(root, "version");
+				if (json_is_string(ver))
+				{
+					jsonVersion = atol(json_string_value(ver));
+				}
 				json_decref(root);
 				if (update)
 				{
@@ -1177,13 +1183,16 @@ static bool GamerzillaSync_internal(CURL *c, const char *short_name, Gamerzilla 
 				}
 				else
 				{
-					GamerzillaSetGameInfo_internal(c, g);
-					for (int k = 0; k < g->numTrophy; k++)
+					if (jsonVersion < g->version)
 					{
-						if ((*t)[k].achieved)
-							GamerzillaSetTrophy_internal(c, g->short_name, g->trophy[k].name);
-						else if ((*t)[k].progress > 0)
-							GamerzillaSetTrophyStat_internal(c, g->short_name, g->trophy[k].name, (*t)[k].progress);
+						GamerzillaSetGameInfo_internal(c, g);
+						for (int k = 0; k < g->numTrophy; k++)
+						{
+							if ((*t)[k].achieved)
+								GamerzillaSetTrophy_internal(c, g->short_name, g->trophy[k].name);
+							else if ((*t)[k].progress > 0)
+								GamerzillaSetTrophyStat_internal(c, g->short_name, g->trophy[k].name, (*t)[k].progress);
+						}
 					}
 				}
 			}
@@ -1320,23 +1329,8 @@ void GamerzillaClearGame(Gamerzilla *g)
 	gamerzillaClear(g, true);
 }
 
-int GamerzillaSetGame(Gamerzilla *g)
+int GamerzillaSetGame_common()
 {
-	current.short_name = strdup(g->short_name);
-	current.name = strdup(g->name);
-	current.image = strdup(g->image);
-	current.version = g->version;
-	current.numTrophy = g->numTrophy;
-	current.trophy = (GamerzillaTrophy*)malloc(sizeof(GamerzillaTrophy) * current.numTrophy);
-	for (int i = 0; i < current.numTrophy; i++)
-	{
-		current.trophy[i].name = strdup(g->trophy[i].name);
-		current.trophy[i].desc = strdup(g->trophy[i].desc);
-		current.trophy[i].max_progress = g->trophy[i].max_progress;
-		current.trophy[i].true_image = strdup(g->trophy[i].true_image);
-		current.trophy[i].false_image = strdup(g->trophy[i].false_image);
-	}
-	currentData = (TrophyData *)calloc(current.numTrophy, sizeof(TrophyData));
 	// Read save file
 	json_t *root = gamefile_read(current.short_name);
 	if (root)
@@ -1347,7 +1341,8 @@ int GamerzillaSetGame(Gamerzilla *g)
 	if (mode != MODE_OFFLINE)
 	{
 		// Get online data
-		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name, NULL);
+		bool success = false;
+		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name, &success);
 		json_error_t error;
 		root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
 		bool needSend = false;
@@ -1377,17 +1372,42 @@ int GamerzillaSetGame(Gamerzilla *g)
 				gamefile_write(&current, currentData);
 			}
 		}
-		else
-		{
+		else if (success)
 			needSend = true;
-		}
 		if (needSend)
 		{
 			GamerzillaSetGameInfo_internal(curl[0], &current);
+			for (int k = 0; k < current.numTrophy; k++)
+			{
+				if (currentData[k].achieved)
+					GamerzillaSetTrophy_internal(curl[0], current.short_name, current.trophy[k].name);
+				else if (currentData[k].progress > 0)
+					GamerzillaSetTrophyStat_internal(curl[0], current.short_name, current.trophy[k].name, currentData[k].progress);
+			}
 		}
 		remote_game_id = 0;
 	}
 	return GAMEID_CURRENT;
+}
+
+int GamerzillaSetGame(Gamerzilla *g)
+{
+	current.short_name = strdup(g->short_name);
+	current.name = strdup(g->name);
+	current.image = strdup(g->image);
+	current.version = g->version;
+	current.numTrophy = g->numTrophy;
+	current.trophy = (GamerzillaTrophy*)malloc(sizeof(GamerzillaTrophy) * current.numTrophy);
+	for (int i = 0; i < current.numTrophy; i++)
+	{
+		current.trophy[i].name = strdup(g->trophy[i].name);
+		current.trophy[i].desc = strdup(g->trophy[i].desc);
+		current.trophy[i].max_progress = g->trophy[i].max_progress;
+		current.trophy[i].true_image = strdup(g->trophy[i].true_image);
+		current.trophy[i].false_image = strdup(g->trophy[i].false_image);
+	}
+	currentData = (TrophyData *)calloc(current.numTrophy, sizeof(TrophyData));
+	return GamerzillaSetGame_common();
 }
 
 static char *strprefix(const char *prefix, char *orig)
@@ -1418,53 +1438,7 @@ int GamerzillaSetGameFromFile(const char *filename, const char *datadir)
 		}
 		json_decref(root);
 	}
-	// Read save file
-	root = gamefile_read(current.short_name);
-	if (root)
-	{
-		GamerzillaMerge(curl[0], &current, &currentData, root);
-		json_decref(root);
-	}
-	if (mode != MODE_OFFLINE)
-	{
-		// Get online data
-		content internal_struct = GamerzillaGetGameInfo_internal(curl[0], current.short_name, NULL);
-		json_error_t error;
-		root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
-		bool needSend = false;
-		if (root)
-		{
-			bool update = GamerzillaMerge(curl[0], &current, &currentData, root);
-			json_t *ver = json_object_get(root, "version");
-			if (json_is_string(ver))
-			{
-				int dbVersion = atol(json_string_value(ver));
-				// Should compare everything but trust version for now.
-				if (dbVersion < current.version)
-					needSend = true;
-			}
-			else
-			{
-				needSend = true;
-			}
-			json_t *incplt = json_object_get(root, "incomplete");
-			if ((incplt) && (json_is_string(incplt)) && (1 == atol(json_string_value(incplt))))
-			{
-				needSend = true;
-			}
-			json_decref(root);
-			if (update)
-			{
-				gamefile_write(&current, currentData);
-			}
-		}
-		if (needSend)
-		{
-			GamerzillaSetGameInfo_internal(curl[0], &current);
-		}
-		remote_game_id = 0;
-	}
-	return GAMEID_CURRENT;
+	return GamerzillaSetGame_common();
 }
 
 int GamerzillaGetGame(const char *short_name)
