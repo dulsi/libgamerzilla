@@ -195,7 +195,8 @@ static void content_destroy(content *x)
 {
 	x->size = 0;
 	x->len = 0;
-	free(x->data);
+	if (x->data)
+		free(x->data);
 	x->data = 0;
 }
 
@@ -1765,12 +1766,10 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			uint32_t sz;
 			uint32_t hostsz;
 			content client_content;
-			content internal_struct;
 			ssize_t ct = 0;
 			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_init(&client_content);
-			content_init(&internal_struct);
 			content_read(fd, &client_content, hostsz);
 			char *name = malloc(client_content.len + 1);
 			memcpy(name, client_content.data, client_content.len);
@@ -1803,6 +1802,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 						GamerzillaUpdateImages(curl[0], name, &g);
 					}
 				}
+				content_destroy(&internal_struct);
 			}
 			if ((g.short_name != NULL) && (accessCallback != NULL))
 			{
@@ -1815,6 +1815,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			writesocket(fd, &sz, sizeof(sz));
 			writesocket(fd, response, hostsz);
 			json_decref(root);
+			content_destroy(&client_content);
 			break;
 		}
 		case CMD_SETGAMEINFO:
@@ -1822,12 +1823,10 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			uint32_t sz;
 			uint32_t hostsz;
 			content client_content;
-			content internal_struct;
 			ssize_t ct = 0;
 			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_init(&client_content);
-			content_init(&internal_struct);
 			content_read(fd, &client_content, hostsz);
 			Gamerzilla g;
 			TrophyData *t = NULL;
@@ -1846,13 +1845,15 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			}
 			if (mode == MODE_SERVERONLINE)
 			{
+				content internal_struct;
+				content_init(&internal_struct);
 				char *esc_content = curl_easy_escape(curl[0], client_content.data, client_content.len);
 				char *postdata = malloc(strlen(esc_content) + 30);
 				strcpy(postdata, "game=");
 				strcat(postdata, esc_content);
 				curl_free(esc_content);
 				char *url, *userpwd;
-				url = malloc(strlen(burl) + 20);
+				url = malloc(strlen(burl) + 30);
 				strcpy(url, burl);
 				strcat(url, "api/gamerzilla/game/add");
 				curl_easy_setopt(curl[0], CURLOPT_URL, url);
@@ -1881,12 +1882,10 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 			uint32_t sz;
 			uint32_t hostsz;
 			content client_content;
-			content internal_struct;
 			ssize_t ct = 0;
 			readsocket(fd, &sz, sizeof(sz));
 			hostsz = ntohl(sz);
 			content_init(&client_content);
-			content_init(&internal_struct);
 			content_read(fd, &client_content, hostsz);
 			char *game_name = malloc(client_content.len + 1);
 			memcpy(game_name, client_content.data, client_content.len);
@@ -2108,7 +2107,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 				fwrite(false_content.data, 1, false_content.len, f);
 				fclose(f);
 			}
-			free (filename);
+			free(filename);
 			if (mode == MODE_SERVERONLINE)
 			{
 				content internal_struct;
