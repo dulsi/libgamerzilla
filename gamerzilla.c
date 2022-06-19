@@ -99,6 +99,7 @@ static struct dirent *readdir(DIR *dirp)
 #define MAX_CMD 7
 
 #define GAMEID_CURRENT 999999
+#define GAMEID_ERROR -1
 
 #define GamerzillaLog(l, s1, s2) \
 	{ \
@@ -281,18 +282,25 @@ static void gamerzillaClear(Gamerzilla *g, bool memFree)
 {
 	if (memFree)
 	{
-		free(g->short_name);
-		free(g->name);
-		free(g->image);
+		if (g->short_name)
+			free(g->short_name);
+		if (g->name)
+			free(g->name);
+		if (g->image)
+			free(g->image);
 		for (int i = 0; i < g->numTrophy; i++)
 		{
-			free(g->trophy[i].name);
+			if (g->trophy[i].name)
+				free(g->trophy[i].name);
 			g->trophy[i].name = NULL;
-			free(g->trophy[i].desc);
+			if (g->trophy[i].desc)
+				free(g->trophy[i].desc);
 			g->trophy[i].desc = NULL;
-			free(g->trophy[i].true_image);
+			if (g->trophy[i].true_image)
+				free(g->trophy[i].true_image);
 			g->trophy[i].true_image = NULL;
-			free(g->trophy[i].false_image);
+			if (g->trophy[i].false_image)
+				free(g->trophy[i].false_image);
 			g->trophy[i].false_image = NULL;
 		}
 		free(g->trophy);
@@ -1391,8 +1399,29 @@ int GamerzillaSetGame_common()
 	return GAMEID_CURRENT;
 }
 
+bool GamerzillaValidateGame(Gamerzilla *g)
+{
+	if ((g->short_name == NULL) || (g->name == NULL) || (g->image == NULL))
+		return false;
+	for (int i = 0; i < current.numTrophy; i++)
+	{
+		if ((g->trophy[i].name == NULL) || (g->trophy[i].desc == NULL) ||
+			(g->trophy[i].true_image == NULL) || (g->trophy[i].false_image == NULL))
+			return false;
+	}
+	return true;
+}
+
 int GamerzillaSetGame(Gamerzilla *g)
 {
+	if (!GamerzillaValidateGame(g))
+		return GAMEID_ERROR;
+	for (int i = 0; i < current.numTrophy; i++)
+	{
+		if ((g->trophy[i].name == NULL) || (g->trophy[i].desc == NULL) ||
+			(g->trophy[i].true_image == NULL) || (g->trophy[i].false_image == NULL))
+			return GAMEID_ERROR;
+	}
 	current.short_name = strdup(g->short_name);
 	current.name = strdup(g->name);
 	current.image = strdup(g->image);
@@ -1438,6 +1467,11 @@ int GamerzillaSetGameFromFile(const char *filename, const char *datadir)
 			current.trophy[i].false_image = strprefix(datadir, current.trophy[i].false_image);
 		}
 		json_decref(root);
+	}
+	if (!GamerzillaValidateGame(&current))
+	{
+		gamerzillaClear(&current, true);
+		return GAMEID_ERROR;
 	}
 	return GamerzillaSetGame_common();
 }
