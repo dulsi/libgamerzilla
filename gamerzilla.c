@@ -1263,6 +1263,7 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 		strcpy(url, burl);
 		strcat(url, "api/gamerzilla/games");
 		curl_easy_setopt(curl[1], CURLOPT_URL, url);
+		curl_easy_setopt(curl[1], CURLOPT_POST, 1);
 		userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
 		strcpy(userpwd, uname);
 		strcat(userpwd, ":");
