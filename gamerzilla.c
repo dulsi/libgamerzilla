@@ -101,6 +101,9 @@ static struct dirent *readdir(DIR *dirp)
 #define GAMEID_CURRENT 999999
 #define GAMEID_ERROR -1
 
+#define GAMERZILLALOG_INFO 1
+#define GAMERZILLALOG_TRACE 2
+
 #define GamerzillaLog(l, s1, s2) \
 	{ \
 		if (logLevel >= l) \
@@ -276,6 +279,21 @@ static size_t curlWriteFile(void *ptr, size_t size, size_t nmemb, void *fd)
 size_t jsonRead(void *buffer, size_t buflen, void *data)
 {
 	return (*game_read)(data, buffer, buflen);
+}
+
+void GamerzillaLogResponse(CURL *c, content *internal_struct)
+{
+	if (logLevel >= GAMERZILLALOG_TRACE)
+	{
+		char tmp[512];
+		long http_code = 0;
+		curl_easy_getinfo (c, CURLINFO_RESPONSE_CODE, &http_code);
+		sprintf(tmp, "%d", http_code);
+		GamerzillaLog(GAMERZILLALOG_TRACE, "Response Code:" , tmp);
+		strncpy(tmp, internal_struct->data, (internal_struct->len > 511 ? 511 : internal_struct->len));
+		tmp[(internal_struct->len > 511 ? 512 : internal_struct->len)] = 0;
+		GamerzillaLog(GAMERZILLALOG_TRACE, "Response:" , tmp);
+	}
 }
 
 static void gamerzillaClear(Gamerzilla *g, bool memFree)
@@ -473,6 +491,7 @@ static content GamerzillaGetGameInfo_internal(CURL *c, const char *name, bool *s
 		}
 		else if (success)
 			*success = true;
+		GamerzillaLogResponse(curl[1], &internal_struct);
 		free(url);
 		free(userpwd);
 		free(postdata);
@@ -978,6 +997,7 @@ static void GamerzillaSetGameInfo_internal(CURL *c, Gamerzilla *g)
 		CURLcode res = curl_easy_perform(c);
 		if (res != CURLE_OK)
 			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		GamerzillaLogResponse(c, &internal_struct);
 		free(url);
 		free(userpwd);
 		free(postdata);
@@ -1155,7 +1175,7 @@ static void GamerzillaSetGameInfo_internal(CURL *c, Gamerzilla *g)
 
 static bool GamerzillaSync_internal(CURL *c, const char *short_name, Gamerzilla *g, TrophyData **t)
 {
-	GamerzillaLog(1, "Sync: ", short_name);
+	GamerzillaLog(GAMERZILLALOG_INFO, "Sync: ", short_name);
 	// Read save file
 	json_t *root = gamefile_read(short_name);
 	if (root)
@@ -1272,6 +1292,7 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 		curl_easy_setopt(curl[1], CURLOPT_WRITEFUNCTION, curlWriteData);
 		curl_easy_setopt(curl[1], CURLOPT_WRITEDATA, &internal_struct);
 		CURLcode res = curl_easy_perform(curl[1]);
+		GamerzillaLogResponse(curl[1], &internal_struct);
 		if (res != CURLE_OK)
 		{
 			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
@@ -1283,6 +1304,7 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 		}
 		else
 		{
+			GamerzillaLog(GAMERZILLALOG_TRACE, "Connected:" , url);
 			json_error_t error;
 			json_t *root = json_loadb(internal_struct.data, internal_struct.len, 0, &error);
 			if (json_is_array(root))
@@ -1304,7 +1326,7 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 					}
 					if (!found)
 					{
-						GamerzillaLog(1, "Online Data: ", game_name);
+						GamerzillaLog(GAMERZILLALOG_INFO, "Online Data: ", game_name);
 						GamerzillaGetGame(game_name);
 						// Get online data
 						content internal_struct = GamerzillaGetGameInfo_internal(curl[1], game_name, NULL);
@@ -1791,7 +1813,7 @@ static bool GamerzillaServerProcessClient(SOCKET fd)
 	{
 		return false;
 	}
-	GamerzillaLog(1, "Command: ", ((cmd <= MAX_CMD) ? cmdName[cmd] : "Unknown Command"));
+	GamerzillaLog(GAMERZILLALOG_INFO, "Command: ", ((cmd <= MAX_CMD) ? cmdName[cmd] : "Unknown Command"));
 	switch (cmd)
 	{
 		case CMD_QUIT:
@@ -2273,15 +2295,30 @@ void GamerzillaQuit()
 	if (current.short_name)
 		gamerzillaClear(&current, true);
 	if (currentData)
+	{
 		free(currentData);
+		currentData = NULL;
+	}
 	if (save_dir)
+	{
 		free(save_dir);
+		save_dir = NULL;
+	}
 	if (burl)
+	{
 		free(burl);
+		burl = NULL;
+	}
 	if (uname)
+	{
 		free(uname);
+		uname = NULL;
+	}
 	if (pswd)
+	{
 		free(pswd);
+		pswd = NULL;
+	}
 	if (server_socket != INVALID_SOCKET)
 	{
 		closesocket(server_socket);
@@ -2307,6 +2344,7 @@ void GamerzillaQuit()
 			closesocket(client_socket[i]);
 		}
 		free(client_socket);
+		client_socket = NULL;
 	}
 }
 
