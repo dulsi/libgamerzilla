@@ -1,6 +1,6 @@
 Summary: Gamerzilla Integration Library
 Name: libgamerzilla
-Version: 0.1.2
+Version: 0.1.3
 Release: %autorelease
 License: zlib
 URL: https://github.com/dulsi/libgamerzilla
