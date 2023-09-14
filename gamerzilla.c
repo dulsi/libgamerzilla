@@ -101,8 +101,9 @@ static struct dirent *readdir(DIR *dirp)
 #define GAMEID_CURRENT 999999
 #define GAMEID_ERROR -1
 
-#define GAMERZILLALOG_INFO 1
-#define GAMERZILLALOG_TRACE 2
+#define GAMERZILLALOG_ERROR 1
+#define GAMERZILLALOG_INFO 2
+#define GAMERZILLALOG_TRACE 3
 
 #define GamerzillaLog(l, s1, s2) \
 	{ \
@@ -371,6 +372,8 @@ bool GamerzillaStart(bool server, const char *savedir)
 			i++;
 		}
 	}
+	if (server_socket != INVALID_SOCKET)
+		return true;
 	if (server)
 	{
 		// Initialize socket
@@ -402,17 +405,25 @@ bool GamerzillaStart(bool server, const char *savedir)
 		server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
 		if (server_socket == INVALID_SOCKET)
 		{
+			GamerzillaLog(GAMERZILLALOG_ERROR, "Invalid socket", "");
 			fprintf(stderr, "Invalid socket\n");
 			return false;
 		}
 		if (bind(server_socket, (struct sockaddr *) &addr, sizeof(sa_family_t) + len + 1) == -1)
 		{
+			GamerzillaLog(GAMERZILLALOG_ERROR, "Bind failed", "");
 			fprintf(stderr, "Bind failed\n");
+			closesocket(server_socket);
+			server_socket = INVALID_SOCKET;
 			return false;
 		}
 #endif
 		if (listen(server_socket, 5) == -1)
+		{
+			closesocket(server_socket);
+			server_socket = INVALID_SOCKET;
 			return false;
+		}
 		return true;
 	}
 	else
@@ -431,7 +442,7 @@ bool GamerzillaStart(bool server, const char *savedir)
 		addr.sin_port = htons(GAMERZILLA_TCPPORT);
 		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 		server_socket = socket(AF_INET, SOCK_STREAM, 0);
-		if (server_socket == -1)
+		if (server_socket == INVALID_SOCKET)
 			return false;
 		if (connect(server_socket, (struct sockaddr*)&addr, sizeof(struct sockaddr_in)) != -1)
 		{
@@ -444,7 +455,7 @@ bool GamerzillaStart(bool server, const char *savedir)
 		addr.sun_family = AF_UNIX;
 		int len = sprintf(&addr.sun_path[1], "Gamerzilla%d", geteuid());
 		server_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-		if (server_socket == -1)
+		if (server_socket == INVALID_SOCKET)
 			return false;
 		if (connect(server_socket, (struct sockaddr*)&addr, sizeof(sa_family_t) + len + 1) != -1)
 		{
@@ -452,6 +463,8 @@ bool GamerzillaStart(bool server, const char *savedir)
 			return true;
 		}
 #endif
+		closesocket(server_socket);
+		server_socket = INVALID_SOCKET;
 	}
 	return false;
 }
@@ -1283,7 +1296,8 @@ bool GamerzillaConnect(const char *baseurl, const char *username, const char *pa
 		strcpy(url, burl);
 		strcat(url, "api/gamerzilla/games");
 		curl_easy_setopt(curl[1], CURLOPT_URL, url);
-		curl_easy_setopt(curl[1], CURLOPT_POST, 1);
+		curl_easy_setopt(curl[1], CURLOPT_POSTFIELDS, "");
+		curl_easy_setopt(curl[1], CURLOPT_POSTFIELDSIZE, 0);
 		userpwd = malloc(strlen(uname) + strlen(pswd) + 2);
 		strcpy(userpwd, uname);
 		strcat(userpwd, ":");
@@ -2299,6 +2313,17 @@ void GamerzillaQuit()
 		free(currentData);
 		currentData = NULL;
 	}
+	if (game_sz > 0)
+	{
+		game_num = 0;
+		game_sz = 0;
+		free(game_list);
+		game_list = NULL;
+		free(game_info);
+		game_info = NULL;
+		free(game_data);
+		game_data = NULL;
+	}
 	if (save_dir)
 	{
 		free(save_dir);
@@ -2319,14 +2344,6 @@ void GamerzillaQuit()
 		free(pswd);
 		pswd = NULL;
 	}
-	if (server_socket != INVALID_SOCKET)
-	{
-		closesocket(server_socket);
-		server_socket = INVALID_SOCKET;
-#ifdef _WIN32
-		WSACleanup();
-#endif
-	}
 	if (curl[0])
 	{
 		curl_easy_cleanup(curl[0]);
@@ -2345,7 +2362,20 @@ void GamerzillaQuit()
 		}
 		free(client_socket);
 		client_socket = NULL;
+		num_client = 0;
+		size_client = 0;
 	}
+	// Leave server socket. If we shut it down and try to start it up again
+	// it will fail. Probably should configure this somehow.
+/*	if (server_socket != INVALID_SOCKET)
+	{
+		closesocket(server_socket);
+		server_socket = INVALID_SOCKET;
+#ifdef _WIN32
+		WSACleanup();
+#endif
+	}*/
+	mode = MODE_OFFLINE;
 }
 
 void GamerzillaSetRead(GamerzillaSize gameSize, GamerzillaOpen gameOpen, GamerzillaRead gameRead, GamerzillaClose gameClose)

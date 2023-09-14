@@ -129,7 +129,7 @@ int main(int argc, char **argv)
 		}
 	}
 	bool init = GamerzillaStart(true, savedir);
-	GamerzillaSetLog(2, stdout);
+	GamerzillaSetLog(3, stdout);
 	if (!init)
 	{
 		fprintf(stderr, "Failed to start server\n");
