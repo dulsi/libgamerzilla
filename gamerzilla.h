@@ -1,4 +1,4 @@
-#ifndef __gammerzilla_h__
+#ifndef __gamerzilla_h__
 #define __gamerzilla_h__
 
 #include <stdbool.h>
